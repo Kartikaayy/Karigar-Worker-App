@@ -20,11 +20,41 @@ class RegisterScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Logo
                 Image.asset(
                   'assets/mp_logo.png',
                   height: 100,
                 ),
+                const SizedBox(height: 16),
+
+                // App Name Pill Glow
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(50),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.2),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  child: const Text(
+                    'KARIGAR APP',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 32),
+
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -57,7 +87,7 @@ class RegisterScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'Register',
+                      'REGISTER',
                       style: TextStyle(fontSize: 16),
                     ),
                   ),
