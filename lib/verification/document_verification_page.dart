@@ -71,6 +71,7 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Documents submitted successfully!")),
       );
+      Navigator.pop(context, true);  // <--- This is important
     }
   }
 

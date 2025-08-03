@@ -1,3 +1,4 @@
+// Your existing imports remain unchanged
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,9 +24,9 @@ class _ProfilePageState extends State<ProfilePage> {
   String city = "Jabalpur";
   String stateName = "Madhya Pradesh";
 
-  String? aadhaarFile;
-  String? photoFile;
-  String? panFile;
+  String? aadhaarFile = "aadhaar_demo.pdf";  // Simulating pre-uploaded file
+  String? photoFile = "photo_demo.jpg";      // Simulating pre-uploaded file
+  String? panFile = "pan_demo.pdf";          // Simulating pre-uploaded file
 
   @override
   void initState() {
@@ -46,10 +47,6 @@ class _ProfilePageState extends State<ProfilePage> {
       street = prefs.getString('street') ?? street;
       city = prefs.getString('city') ?? city;
       stateName = prefs.getString('stateName') ?? stateName;
-
-      aadhaarFile = prefs.getString('aadhaarFile');
-      photoFile = prefs.getString('photoFile');
-      panFile = prefs.getString('panFile');
     });
   }
 
@@ -65,10 +62,6 @@ class _ProfilePageState extends State<ProfilePage> {
     prefs.setString('street', street);
     prefs.setString('city', city);
     prefs.setString('stateName', stateName);
-
-    if (aadhaarFile != null) prefs.setString('aadhaarFile', aadhaarFile!);
-    if (photoFile != null) prefs.setString('photoFile', photoFile!);
-    if (panFile != null) prefs.setString('panFile', panFile!);
   }
 
   void _editField(String title, String currentValue, Function(String) onSave) {
@@ -91,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
             TextButton(
               onPressed: () {
                 onSave(controller.text);
-                _saveProfileData();  // <-- Save after update
+                _saveProfileData();  // Save after update
                 Navigator.pop(context);
               },
               child: const Text('Save'),
@@ -99,131 +92,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         );
       },
-    );
-  }
-
-  Future<void> pickDocument(String type) async {
-    final result = await FilePicker.platform.pickFiles();
-
-    if (result != null) {
-      setState(() {
-        switch (type) {
-          case 'aadhaar':
-            aadhaarFile = result.files.single.name;
-            break;
-          case 'photo':
-            photoFile = result.files.single.name;
-            break;
-          case 'pan':
-            panFile = result.files.single.name;
-            break;
-        }
-      });
-      _saveProfileData();  // <-- Save after picking document
-    }
-  }
-
-  void showDocumentUploadModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Upload Documents",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              documentUploadTile(
-                title: "Aadhaar Card",
-                type: "aadhaar",
-                fileName: aadhaarFile,
-                onUpload: () => pickDocument('aadhaar'),
-              ),
-              documentUploadTile(
-                title: "Photo",
-                type: "photo",
-                fileName: photoFile,
-                onUpload: () => pickDocument('photo'),
-              ),
-              documentUploadTile(
-                title: "PAN Card",
-                type: "pan",
-                fileName: panFile,
-                onUpload: () => pickDocument('pan'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  if (aadhaarFile == null || photoFile == null || panFile == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please upload all documents")),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Documents Submitted Successfully")),
-                    );
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text("Submit"),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget documentUploadTile({
-    required String title,
-    required String type,
-    required String? fileName,
-    required VoidCallback onUpload,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ElevatedButton.icon(
-          onPressed: onUpload,
-          icon: const Icon(Icons.upload_file),
-          label: Text("Upload $title"),
-        ),
-        if (fileName != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text("Selected: $fileName", style: const TextStyle(fontSize: 14)),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      if (type == 'aadhaar') aadhaarFile = null;
-                      if (type == 'photo') photoFile = null;
-                      if (type == 'pan') panFile = null;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(height: 10),
-      ],
     );
   }
 
@@ -278,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
             const SizedBox(height: 16),
-            _documentCard(),
+            _documentCard(),  // Updated Document Card without button
             const SizedBox(height: 16),
             _infoCard(
               title: "Address Information",
@@ -362,20 +230,16 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           const Text("Documents & Verification", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const Divider(thickness: 1, color: Colors.black12, height: 20),
-          _documentRow("Aadhaar Card", aadhaarFile != null),
-          _documentRow("Photo", photoFile != null),
-          _documentRow("PAN Card", panFile != null),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: showDocumentUploadModal,
-            child: const Text("Verify Documents"),
-          ),
+          _documentRow("Aadhaar Card", true),
+          _documentRow("Photo", true),
+          _documentRow("PAN Card", true),
+          // Removed the "Verify Documents" button here.
         ],
       ),
     );
   }
 
-  Widget _documentRow(String docName, bool isVerified) {
+  Widget _documentRow(String docName, bool isApproved) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -383,13 +247,13 @@ class _ProfilePageState extends State<ProfilePage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: isVerified ? Colors.green.shade100 : Colors.red.shade100,
+            color: isApproved ? Colors.green.shade100 : Colors.red.shade100,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            isVerified ? "Uploaded" : "Pending",
+            isApproved ? "Approved" : "Pending",
             style: TextStyle(
-              color: isVerified ? Colors.green : Colors.red,
+              color: isApproved ? Colors.green : Colors.red,
               fontWeight: FontWeight.w600,
               fontSize: 12,
             ),

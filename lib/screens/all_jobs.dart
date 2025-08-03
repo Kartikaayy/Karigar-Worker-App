@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'upcoming_details.dart';
-import '../utils/dummy_bookings.dart'; // <-- Import shared upcoming bookings
+import '../all temporary data/upcoming_details.dart';
+import '../all temporary data/dummy_bookings.dart'; // <-- Import shared upcoming bookings
 
 class AllJobsPage extends StatefulWidget {
   const AllJobsPage({super.key});

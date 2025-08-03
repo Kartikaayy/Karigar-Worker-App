@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../screens/profile_page.dart';
 import '../screens/notification_page.dart';
 import '../screens/earning_page.dart';
-import 'upcoming_details.dart';
+import '../all temporary data/upcoming_details.dart';
 import '../screens/all_jobs.dart';
-import '../utils/dummy_bookings.dart'; // <-- Import shared bookings list
+import '../all temporary data/dummy_bookings.dart'; // <-- Import shared bookings list
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
