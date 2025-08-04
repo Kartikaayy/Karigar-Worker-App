@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../all temporary data/upcoming_details.dart';
-import '../all temporary data/dummy_bookings.dart'; // <-- Import shared upcoming bookings
+import '../all temporary data/dummy_bookings.dart';
 
 class AllJobsPage extends StatefulWidget {
   const AllJobsPage({super.key});
@@ -31,21 +31,32 @@ class _AllJobsPageState extends State<AllJobsPage> {
     },
   ];
 
+  late List<Map<String, dynamic>> allJobs;
+
   @override
-  Widget build(BuildContext context) {
-    // Combine Active Jobs, Upcoming Bookings, and Completed Jobs
-    final allJobs = [
+  void initState() {
+    super.initState();
+    allJobs = [
       ...jobs,
       ...upcomingBookings.map((booking) => {
-        'status': 'Upcoming',
+        'status': booking['status'] ?? 'Upcoming',
         'service': booking['service'],
         'description': booking['description'],
         'location': booking['location'],
         'time': booking['time'],
-        'price': '₹${booking['price']}',
+        'price': booking['price'] != null ? '₹${booking['price']}' : '₹0',
       }),
     ];
+  }
 
+  void _updateStatus(int index, String status) {
+    setState(() {
+      allJobs[index]['status'] = status;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final filteredJobs = selectedFilter == 'All'
         ? allJobs
         : allJobs.where((job) => job['status'] == selectedFilter).toList();
@@ -62,7 +73,6 @@ class _AllJobsPageState extends State<AllJobsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // AppBar Like Text (No Orange BG)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Text(
@@ -74,8 +84,6 @@ class _AllJobsPageState extends State<AllJobsPage> {
                 ),
               ),
             ),
-
-            // Count Boxes Row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Row(
@@ -89,50 +97,49 @@ class _AllJobsPageState extends State<AllJobsPage> {
                 ],
               ),
             ),
-
-            // Filter Tabs Row
             Padding(
               padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: ['All', 'Active', 'Upcoming', 'Completed'].map((filter) {
-                  bool isSelected = selectedFilter == filter;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: GestureDetector(
-                      onTap: () => setState(() => selectedFilter = filter),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFFF7043) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: Text(
-                          filter,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Active', 'Upcoming', 'Completed', 'Accepted', 'Rejected']
+                      .map((filter) {
+                    bool isSelected = selectedFilter == filter;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: GestureDetector(
+                        onTap: () => setState(() => selectedFilter = filter),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFFFF7043) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade400),
+                          ),
+                          child: Text(
+                            filter,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
-
             const SizedBox(height: 10),
-
-            // Jobs List
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 itemCount: filteredJobs.length,
                 itemBuilder: (context, index) {
                   final job = filteredJobs[index];
-                  return _buildJobCard(job, context);
+                  int realIndex = allJobs.indexOf(job);
+                  return _buildJobCard(job, realIndex);
                 },
               ),
             ),
@@ -160,18 +167,34 @@ class _AllJobsPageState extends State<AllJobsPage> {
     );
   }
 
-  Widget _buildJobCard(Map<String, dynamic> job, BuildContext context) {
+  Widget _buildJobCard(Map<String, dynamic> job, int index) {
     Color borderColor;
     Color statusColor;
-    if (job['status'] == 'Active') {
+    Color cardColor = Colors.white;
+
+    String status = job['status'];
+
+    if (status == 'Active') {
       borderColor = Colors.orange;
       statusColor = Colors.orange;
-    } else if (job['status'] == 'Upcoming') {
+    } else if (status == 'Upcoming') {
       borderColor = Colors.blue;
       statusColor = Colors.blue;
-    } else {
+    } else if (status == 'Completed') {
       borderColor = Colors.green;
       statusColor = Colors.green;
+      cardColor = Colors.green.shade100;
+    } else if (status == 'Accepted') {
+      borderColor = Colors.green;
+      statusColor = Colors.green;
+      cardColor = Colors.green.shade100;
+    } else if (status == 'Rejected') {
+      borderColor = Colors.red;
+      statusColor = Colors.red;
+      cardColor = Colors.red.shade100;
+    } else {
+      borderColor = Colors.grey;
+      statusColor = Colors.grey;
     }
 
     return Container(
@@ -180,7 +203,7 @@ class _AllJobsPageState extends State<AllJobsPage> {
       decoration: BoxDecoration(
         border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
+        color: cardColor,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +217,7 @@ class _AllJobsPageState extends State<AllJobsPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  job['status'],
+                  status,
                   style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -226,48 +249,106 @@ class _AllJobsPageState extends State<AllJobsPage> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // Conditional Buttons
-          job['status'] == 'Completed'
-              ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Completed',
-              style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
-            ),
-          )
-              : ElevatedButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          // View Details button conditionally rendered (Not shown for Completed jobs)
+          if (status != 'Completed')
+            ElevatedButton(
+              onPressed: () async {
+                String? result = await showModalBottomSheet<String>(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (_) {
+                    return UpcomingDetailsSheet(
+                      service: job['service'],
+                      customer: 'Customer Name',
+                      time: job['time'],
+                      location: job['location'],
+                      description: job['description'],
+                      price: job['price'],
+                      onAction: (status) => Navigator.pop(_, status),
+                    );
+                  },
+                );
+                if (result != null) {
+                  _updateStatus(index, result);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7043),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                builder: (_) {
-                  return UpcomingDetailsSheet(
-                    service: job['service'],
-                    customer: 'Customer Name',
-                    time: job['time'],
-                    location: job['location'],
-                    description: job['description'],
-                    price: job['price'],
-                  );
-                },
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7043),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
               ),
+              child: const Text('View Details'),
             ),
-            child: const Text('View Details'),
-          ),
+        ],
+      ),
+    );
+  }
+}
+
+class UpcomingDetailsSheet extends StatelessWidget {
+  final String service;
+  final String customer;
+  final String time;
+  final String location;
+  final String description;
+  final String price;
+  final Function(String)? onAction;
+
+  const UpcomingDetailsSheet({
+    super.key,
+    required this.service,
+    required this.customer,
+    required this.time,
+    required this.location,
+    required this.description,
+    required this.price,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(service, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Text("Customer: $customer"),
+          Text("Date & Time: $time"),
+          Text("Address: $location"),
+          const SizedBox(height: 10),
+          Text("Description: $description"),
+          Text("Price: $price"),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.4,
+                child: ElevatedButton(
+                  onPressed: () => onAction?.call('Accepted'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  child: const Text("Accept"),
+                ),
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.4,
+                child: ElevatedButton(
+                  onPressed: () => onAction?.call('Rejected'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Reject"),
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );

@@ -23,4 +23,12 @@ final List<Map<String, dynamic>> upcomingBookings = [
     'time': '3rd Aug, 7:00 PM',
     'price': '1000',
   },
+  {
+    'service': 'Fan Repair',
+    'customer': 'Amit Kumar',
+    'time': 'Today, 3:00 PM',
+    'location': 'Sector 12, Gurgaon',
+    'description': 'Fan not working, needs blade replacement',
+    'price': '₹500',
+  },
 ];
