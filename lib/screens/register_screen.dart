@@ -1,8 +1,126 @@
 import 'package:flutter/material.dart';
-import 'landing_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class RegisterScreen extends StatelessWidget {
+import 'login_screen.dart';
+
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty) return _showError("Name is required.");
+    if (email.isEmpty) return _showError("Email is required.");
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      return _showError("Enter a valid email address.");
+    }
+    if (phone.isEmpty) return _showError("Phone number is required.");
+    if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
+      return _showError("Enter a valid 10-digit phone number.");
+    }
+    if (password.isEmpty) return _showError("Password is required.");
+    if (password.length < 6) {
+      return _showError("Password should be at least 6 characters.");
+    }
+
+    setState(() => _isLoading = true);
+
+    final url = Uri.parse("https://callkaarigar.onrender.com/api/users/register");
+    print("Navigating to login...");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+        },
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 ) {
+        if (!mounted) return;
+
+        // Show success first
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration successful")),
+        );
+
+        // Wait a short delay for user to see the toast
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Now navigate to Login screen and clear history
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (Route<dynamic> route) => false,
+        );
+      }
+       else {
+        _showError(responseData['message'] ?? "Registration failed");
+      }
+    } catch (e) {
+      _showError("Something went wrong: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildInputField(IconData icon, String hint,
+      {bool isPassword = false, required TextEditingController controller}) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.white70),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,14 +139,8 @@ class RegisterScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Image.asset(
-                  'assets/mp_logo.png',
-                  height: 100,
-                ),
+                Image.asset('assets/mp_logo.png', height: 100),
                 const SizedBox(height: 16),
-
-                // App Name Pill Glow
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   decoration: BoxDecoration(
@@ -53,9 +165,7 @@ class RegisterScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -65,23 +175,18 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _buildInputField(Icons.person, 'Full Name'),
+                _buildInputField(Icons.person, 'Full Name', controller: _nameController),
                 const SizedBox(height: 16),
-                _buildInputField(Icons.email, 'Email'),
+                _buildInputField(Icons.email, 'Email', controller: _emailController),
                 const SizedBox(height: 16),
-                _buildInputField(Icons.phone, 'Phone Number'),
+                _buildInputField(Icons.phone, 'Phone Number', controller: _phoneController),
                 const SizedBox(height: 16),
-                _buildInputField(Icons.lock, 'Password', isPassword: true),
+                _buildInputField(Icons.lock, 'Password', isPassword: true, controller: _passwordController),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LandingPage()),
-                      );
-                    },
+                    onPressed: _isLoading ? null : _register,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.deepPurple,
@@ -90,10 +195,9 @@ class RegisterScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'REGISTER',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.deepPurple)
+                        : const Text('REGISTER', style: TextStyle(fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -109,24 +213,6 @@ class RegisterScreen extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputField(IconData icon, String hint, {bool isPassword = false}) {
-    return TextField(
-      obscureText: isPassword,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.white70),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
         ),
       ),
     );

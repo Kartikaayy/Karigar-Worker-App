@@ -1,9 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'register_screen.dart';
 import 'landing_page.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Please enter both email/phone and password.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // ✅ Use the deployed API URL
+    final url = Uri.parse("https://callkaarigar.onrender.com/api/users/login");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text.trim(),
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      print("response data $responseData");
+      if (response.statusCode == 200 ) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("login successful")),
+        );
+        await Future.delayed(const Duration(seconds: 2));
+
+        print("Navigating to LandingPage...");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LandingPage()),
+        );
+
+        final token = responseData['token'];
+        print("✅ Login successful. JWT Token: $token");
+
+
+      } else {
+        print("❌ Login failed. Response: ${response.body}");
+        _showError(responseData['message'] ?? "Login failed");
+      }
+    } catch (e) {
+      _showError("Something went wrong: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,16 +99,9 @@ class LoginScreen extends StatelessWidget {
         child: Center(
           child: SingleChildScrollView(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Image.asset(
-                  'assets/mp_logo.png',
-                  height: 100,
-                ),
+                Image.asset('assets/mp_logo.png', height: 100),
                 const SizedBox(height: 16),
-
-                // App Name with Pill & Glow
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   decoration: BoxDecoration(
@@ -54,42 +126,28 @@ class LoginScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
-                // Welcome Texts
                 const Text(
                   'Welcome Back',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Login to your account',
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
+                const Text('Login to your account', style: TextStyle(color: Colors.white70, fontSize: 16)),
                 const SizedBox(height: 32),
 
-                // Email Input
-                _buildInputField(Icons.email, 'Email or Phone'),
+                // Email / Phone
+                _buildInputField(Icons.email, 'Email or Phone', controller: _emailController),
                 const SizedBox(height: 16),
 
-                // Password Input
-                _buildInputField(Icons.lock, 'Password', isPassword: true),
+                // Password
+                _buildInputField(Icons.lock, 'Password', isPassword: true, controller: _passwordController),
                 const SizedBox(height: 10),
 
-                // Forgot password
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {},
-                    child: const Text(
-                      "Forgot Password?",
-                      style: TextStyle(color: Colors.white70),
-                    ),
+                    child: const Text("Forgot Password?", style: TextStyle(color: Colors.white70)),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -98,12 +156,7 @@ class LoginScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LandingPage()),
-                      );
-                    },
+                    onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.deepPurple,
@@ -112,26 +165,52 @@ class LoginScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'LOGIN',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.deepPurple)
+                        : const Text('LOGIN', style: TextStyle(fontSize: 16)),
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Register link
                 TextButton(
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                    );
+                    ).then((_) {
+                      // Clears email and password fields when coming back from Register screen
+                      _emailController.clear();
+                      _passwordController.clear();
+                    });
                   },
                   child: const Text(
                     "Don't have an account? Register",
                     style: TextStyle(color: Colors.white70),
                   ),
+                ),
+
+                const SizedBox(height: 12),
+
+// TODO: REMOVE THIS BUTTON LATER (For testing only)
+// This button is only for development/testing purposes.
+// It directly takes you to the landing page without logging in.
+// Remove this after login functionality is confirmed to work.
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LandingPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("GO TO LANDING PAGE (TEMP)"),
                 ),
               ],
             ),
@@ -141,8 +220,14 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInputField(IconData icon, String hint, {bool isPassword = false}) {
+  Widget _buildInputField(
+      IconData icon,
+      String hint, {
+        bool isPassword = false,
+        required TextEditingController controller,
+      }) {
     return TextField(
+      controller: controller,
       obscureText: isPassword,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
