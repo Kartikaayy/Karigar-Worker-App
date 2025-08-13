@@ -267,7 +267,7 @@ class _AllJobsPageState extends State<AllJobsPage> {
                       location: job['location'],
                       description: job['description'],
                       price: job['price'],
-                      onAction: (status) => Navigator.pop(_, status),
+                      onAction: (status) => Navigator.pop(context, status),
                     );
                   },
                 );

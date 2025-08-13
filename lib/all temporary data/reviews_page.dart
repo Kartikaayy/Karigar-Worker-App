@@ -85,7 +85,7 @@ class ReviewsPage extends StatelessWidget {
             const Text("All Reviews", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
 
-            ...reviews.map((review) => _buildReviewTile(review)).toList(),
+            ...reviews.map((review) => _buildReviewTile(review)),
           ],
         ),
       ),

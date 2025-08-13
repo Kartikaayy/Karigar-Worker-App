@@ -9,8 +9,14 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0' // <-- Updated AGP version
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+        // Import the Firebase BoM
+        implementation platform('com.google.firebase:firebase-bom:34.1.0')
+
+        // Add the dependencies for the Firebase products you want to use
+        implementation 'com.google.firebase:firebase-analytics'
+        implementation 'com.google.firebase:firebase-storage'
     }
 }
 

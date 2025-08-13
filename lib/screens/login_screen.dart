@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'register_screen.dart';
 import 'landing_page.dart';
 
@@ -44,21 +44,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final responseData = jsonDecode(response.body);
       print("response data $responseData");
+
       if (response.statusCode == 200 ) {
+
+        final token = responseData['token'];
+        final user = responseData['user'];
+        final workerId = user != null ? user['_id'] : null;
+
+        print("✅ Login successful. JWT Token: $token");
+        print("✅ Worker ID: $workerId");
+
+        if (workerId == null) {
+          _showError("User ID not found in response.");
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // ✅ Save token in SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("token", token);
+        await prefs.setString("workerId", workerId);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("login successful")),
         );
-        await Future.delayed(const Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 1));
 
         print("Navigating to LandingPage...");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LandingPage()),
         );
-
-        final token = responseData['token'];
-        print("✅ Login successful. JWT Token: $token");
 
 
       } else {
@@ -191,27 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 12),
 
-// TODO: REMOVE THIS BUTTON LATER (For testing only)
-// This button is only for development/testing purposes.
-// It directly takes you to the landing page without logging in.
-// Remove this after login functionality is confirmed to work.
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LandingPage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text("GO TO LANDING PAGE (TEMP)"),
-                ),
               ],
             ),
           ),

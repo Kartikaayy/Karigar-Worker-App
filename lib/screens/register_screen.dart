@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  String? _selectedRole; // Role dropdown value
   bool _isLoading = false;
 
   @override
@@ -47,11 +48,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (password.length < 6) {
       return _showError("Password should be at least 6 characters.");
     }
+    if (_selectedRole == null) {
+      return _showError("Please select a role.");
+    }
 
     setState(() => _isLoading = true);
 
     final url = Uri.parse("https://callkaarigar.onrender.com/api/users/register");
-    print("Navigating to login...");
 
     try {
       final response = await http.post(
@@ -62,31 +65,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'email': email,
           'phone': phone,
           'password': password,
+          'role': _selectedRole!, // Send selected role
         },
       );
 
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode >= 200 &&
-          response.statusCode < 300 ) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         if (!mounted) return;
 
-        // Show success first
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Registration successful")),
         );
 
-        // Wait a short delay for user to see the toast
         await Future.delayed(const Duration(seconds: 1));
 
-        // Now navigate to Login screen and clear history
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
               (Route<dynamic> route) => false,
         );
-      }
-       else {
+      } else {
         _showError(responseData['message'] ?? "Registration failed");
       }
     } catch (e) {
@@ -119,6 +118,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
           borderSide: BorderSide.none,
         ),
       ),
+    );
+  }
+
+  Widget _buildRoleDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedRole,
+      onChanged: (value) {
+        setState(() {
+          _selectedRole = value;
+        });
+      },
+      items: const [
+        DropdownMenuItem(value: 'worker', child: Text('Worker')),
+        DropdownMenuItem(value: 'admin', child: Text('Admin')),
+      ],
+      dropdownColor: Colors.deepPurple.shade200,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.account_tree, color: Colors.white70),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        hintText: 'Select Role',
+        hintStyle: const TextStyle(color: Colors.white54),
+      ),
+      style: const TextStyle(color: Colors.white),
     );
   }
 
@@ -182,6 +209,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildInputField(Icons.phone, 'Phone Number', controller: _phoneController),
                 const SizedBox(height: 16),
                 _buildInputField(Icons.lock, 'Password', isPassword: true, controller: _passwordController),
+                const SizedBox(height: 16),
+                _buildRoleDropdown(), // ✅ Role dropdown
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/login_screen.dart';
 import '../widgets/profile_image_picker.dart';
+import '../screens/api_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -31,7 +32,40 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadProfileData();
+    _loadProfileData();      // Load offline saved data
+    _fetchProfileFromAPI();  // Fetch latest from server
+  }
+
+  Future<void> _fetchProfileFromAPI() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString("token");
+
+    if (token == null || token.isEmpty) {
+      print("❌ No token found in SharedPreferences.");
+      return;
+    }
+
+    final profile = await ApiService.getUserProfile(token); // ✅ Pass actual token here
+    print("API Response: $profile");
+
+    if (profile != null && profile['error'] == null) {
+      setState(() {
+        name = profile["name"] ?? name;
+        phone = profile["phone"] ?? phone;
+        email = profile["email"] ?? email;
+        gender = profile["gender"] ?? gender;
+        profession = profile["profession"] ?? profession;
+        experience = profile["experience"] ?? experience;
+        area = profile["area"] ?? area;
+        street = profile["street"] ?? street;
+        city = profile["city"] ?? city;
+        stateName = profile["state"] ?? stateName;
+      });
+
+      _saveProfileData(); // Save updated data offline
+    } else {
+      print("⚠️ Could not update profile from API: ${profile?['message']}");
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -199,16 +233,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   Row(
                     children: [
                       Text(entry.value, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      IconButton(
+                      /*IconButton(
                         icon: const Icon(Icons.edit, size: 16),
                         onPressed: () => onEdit(entry.key),
-                      ),
+                      ),*/
                     ],
                   ),
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

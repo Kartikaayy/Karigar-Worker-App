@@ -107,7 +107,7 @@ class CompletedServicesPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: const Color(0xFFFF7043),
+                color: Color(0xFFFF7043),
                 border: Border(top: BorderSide(color: Colors.grey)),
               ),
               child: Row(

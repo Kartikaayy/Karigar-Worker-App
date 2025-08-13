@@ -299,7 +299,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                                       location: booking['location'] ?? '',
                                       description: booking['description'] ?? '',
                                       price: booking['price'] ?? '',
-                                      onAction: (status) => Navigator.pop(_, status),
+                                      onAction: (status) => Navigator.pop(context, status),
                                     );
                                   },
                                 );
@@ -333,7 +333,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
