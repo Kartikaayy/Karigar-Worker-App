@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: Border.all(color: Colors.white.withOpacity(0.2)),
                   ),
                   child: const Text(
-                    'KARIGAR APP',
+                    'Call KARIGAR APP',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,

@@ -1,10 +1,8 @@
-// Your existing imports remain unchanged
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../screens/login_screen.dart';
+import 'api_service.dart'; // Ensure this path is correct
 import '../widgets/profile_image_picker.dart';
-import '../screens/api_service.dart';
+import 'package:flutter/foundation.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,126 +12,166 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  String name = "Rajesh Kumar";
-  String phone = "+91 98765 43210";
-  String email = "rajesh@email.com";
-  String gender = "Male";
-  String profession = "Electrician";
-  String experience = "5+ years";
-  String area = "Shivaji Nagar, Jabalpur";
-  String street = "124, Street Name";
-  String city = "Jabalpur";
-  String stateName = "Madhya Pradesh";
+  // Initialize with hardcoded data and placeholders
+  Map<String, String> profileData = {
+    "name": "Kallu Mistri",
+    "phone": "5647382910",
+    "email": "mistri@gmail.com",
+    "gender": "Male",
+    "profession": "Plumber",
+    "experience": "+5 years",
+    "area": "Bhopal",
+    "street": "123 Main St",
+    "city": "Bhopal",
+    "state": "Madhya Pradesh",
+  };
 
-  String? aadhaarFile = "aadhaar_demo.pdf";  // Simulating pre-uploaded file
-  String? photoFile = "photo_demo.jpg";      // Simulating pre-uploaded file
-  String? panFile = "pan_demo.pdf";          // Simulating pre-uploaded file
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadProfileData();      // Load offline saved data
-    _fetchProfileFromAPI();  // Fetch latest from server
+    _loadProfileData(); // Load cached data first for quick display
+    _fetchProfileFromAPI(); // Then fetch the latest data from the server
   }
 
   Future<void> _fetchProfileFromAPI() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
 
-    if (token == null || token.isEmpty) {
-      print("❌ No token found in SharedPreferences.");
+    if (token == null) {
+      _handleApiError({'error': 'no_token', 'message': 'No token found.'});
+      setState(() { _isLoading = false; });
       return;
     }
 
-    final profile = await ApiService.getUserProfile(token); // ✅ Pass actual token here
-    print("API Response: $profile");
+    // Step 1: Fetch basic user profile
+    final Map<String, dynamic> apiResponse = await ApiService.getUserProfile(token);
 
-    if (profile != null && profile['error'] == null) {
-      setState(() {
-        name = profile["name"] ?? name;
-        phone = profile["phone"] ?? phone;
-        email = profile["email"] ?? email;
-        gender = profile["gender"] ?? gender;
-        profession = profile["profession"] ?? profession;
-        experience = profile["experience"] ?? experience;
-        area = profile["area"] ?? area;
-        street = profile["street"] ?? street;
-        city = profile["city"] ?? city;
-        stateName = profile["state"] ?? stateName;
-      });
-
-      _saveProfileData(); // Save updated data offline
+    if (apiResponse['error'] != null) {
+      _handleApiError(apiResponse);
     } else {
-      print("⚠️ Could not update profile from API: ${profile?['message']}");
+      _updateProfileState(apiResponse);
+      _saveProfileData();
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // Merges API data with hardcoded defaults.
+  void _updateProfileState(Map<String, dynamic> data) {
+    if (mounted) {
+      setState(() {
+        profileData["name"] = data["name"] ?? profileData["name"];
+        profileData["phone"] = data["phone"] ?? profileData["phone"];
+        profileData["email"] = data["email"] ?? profileData["email"];
+        // For other fields, they'll remain hardcoded as the API response doesn't contain them
+      });
     }
   }
 
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      name = prefs.getString('name') ?? name;
-      phone = prefs.getString('phone') ?? phone;
-      email = prefs.getString('email') ?? email;
-      gender = prefs.getString('gender') ?? gender;
-      profession = prefs.getString('profession') ?? profession;
-      experience = prefs.getString('experience') ?? experience;
-      area = prefs.getString('area') ?? area;
-      street = prefs.getString('street') ?? street;
-      city = prefs.getString('city') ?? city;
-      stateName = prefs.getString('stateName') ?? stateName;
-    });
+    if (mounted) {
+      setState(() {
+        // Load data from SharedPreferences; if not found, use the hardcoded defaults.
+        profileData["name"] = prefs.getString('name') ?? profileData["name"]!;
+        profileData["phone"] = prefs.getString('phone') ?? profileData["phone"]!;
+        profileData["email"] = prefs.getString('email') ?? profileData["email"]!;
+        profileData["gender"] = prefs.getString('gender') ?? profileData["gender"]!;
+        profileData["profession"] = prefs.getString('profession') ?? profileData["profession"]!;
+        profileData["experience"] = prefs.getString('experience') ?? profileData["experience"]!;
+        profileData["area"] = prefs.getString('area') ?? profileData["area"]!;
+        profileData["street"] = prefs.getString('street') ?? profileData["street"]!;
+        profileData["city"] = prefs.getString('city') ?? profileData["city"]!;
+        profileData["state"] = prefs.getString('state') ?? profileData["state"]!;
+      });
+    }
   }
 
   Future<void> _saveProfileData() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('name', name);
-    prefs.setString('phone', phone);
-    prefs.setString('email', email);
-    prefs.setString('gender', gender);
-    prefs.setString('profession', profession);
-    prefs.setString('experience', experience);
-    prefs.setString('area', area);
-    prefs.setString('street', street);
-    prefs.setString('city', city);
-    prefs.setString('stateName', stateName);
+    prefs.setString('name', profileData["name"]!);
+    prefs.setString('phone', profileData["phone"]!);
+    prefs.setString('email', profileData["email"]!);
+    prefs.setString('gender', profileData["gender"]!);
+    prefs.setString('profession', profileData["profession"]!);
+    prefs.setString('experience', profileData["experience"]!);
+    prefs.setString('area', profileData["area"]!);
+    prefs.setString('street', profileData["street"]!);
+    prefs.setString('city', profileData["city"]!);
+    prefs.setString('state', profileData["state"]!);
   }
 
-  void _editField(String title, String currentValue, Function(String) onSave) {
+  void _handleApiError(Map<String, dynamic> error) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: ${error['message']}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    if (error['error'] == 'unauthorized' && mounted) {
+      // Logic to navigate to LoginScreen
+    }
+  }
+
+  Future<void> _editField(String field, String currentValue) async {
     TextEditingController controller = TextEditingController(text: currentValue);
 
-    showDialog(
+    final newText = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit $title'),
+          title: Text("Edit $field"),
           content: TextField(
             controller: controller,
-            decoration: InputDecoration(hintText: "Enter $title"),
+            decoration: InputDecoration(
+              hintText: "Enter new $field",
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(null),
             ),
             TextButton(
-              onPressed: () {
-                onSave(controller.text);
-                _saveProfileData();  // Save after update
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
+              child: const Text("Save"),
+              onPressed: () => Navigator.of(context).pop(controller.text),
             ),
           ],
         );
       },
     );
+
+    if (newText != null && newText.isNotEmpty && newText != currentValue) {
+      setState(() {
+        profileData[field] = newText;
+      });
+      _saveProfileData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$field updated successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -142,57 +180,41 @@ class _ProfilePageState extends State<ProfilePage> {
             const ProfileImagePicker(),
             const SizedBox(height: 10),
             Text(
-              name,
+              profileData["name"]!,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text(
-              profession,
+              profileData["profession"]!,
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
             _infoCard(
               title: "Personal Information",
               details: {
-                "Name": name,
-                "Phone": phone,
-                "Email": email,
-                "Gender": gender,
-              },
-              onEdit: (field) {
-                if (field == "Name") _editField("Name", name, (value) => setState(() => name = value));
-                if (field == "Phone") _editField("Phone", phone, (value) => setState(() => phone = value));
-                if (field == "Email") _editField("Email", email, (value) => setState(() => email = value));
-                if (field == "Gender") _editField("Gender", gender, (value) => setState(() => gender = value));
+                "Name": profileData["name"]!,
+                "Phone": profileData["phone"]!,
+                "Email": profileData["email"]!,
+                "Gender": profileData["gender"]!,
               },
             ),
             const SizedBox(height: 16),
             _infoCard(
               title: "Professional Details",
               details: {
-                "Profession": profession,
-                "Experience": experience,
-                "Working Area": area,
-              },
-              onEdit: (field) {
-                if (field == "Profession") _editField("Profession", profession, (value) => setState(() => profession = value));
-                if (field == "Experience") _editField("Experience", experience, (value) => setState(() => experience = value));
-                if (field == "Working Area") _editField("Working Area", area, (value) => setState(() => area = value));
+                "Profession": profileData["profession"]!,
+                "Experience": profileData["experience"]!,
+                "Working Area": profileData["area"]!,
               },
             ),
             const SizedBox(height: 16),
-            _documentCard(),  // Updated Document Card without button
+            _documentCard(),
             const SizedBox(height: 16),
             _infoCard(
               title: "Address Information",
               details: {
-                "Street": street,
-                "City": city,
-                "State": stateName,
-              },
-              onEdit: (field) {
-                if (field == "Street") _editField("Street", street, (value) => setState(() => street = value));
-                if (field == "City") _editField("City", city, (value) => setState(() => city = value));
-                if (field == "State") _editField("State", stateName, (value) => setState(() => stateName = value));
+                "Street": profileData["street"]!,
+                "City": profileData["city"]!,
+                "State": profileData["state"]!,
               },
             ),
             const SizedBox(height: 16),
@@ -206,7 +228,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _infoCard({
     required String title,
     required Map<String, String> details,
-    required Function(String) onEdit,
   }) {
     return Container(
       width: double.infinity,
@@ -233,10 +254,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   Row(
                     children: [
                       Text(entry.value, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      /*IconButton(
+                      IconButton(
                         icon: const Icon(Icons.edit, size: 16),
-                        onPressed: () => onEdit(entry.key),
-                      ),*/
+                        onPressed: () => _editField(entry.key, entry.value),
+                      ),
                     ],
                   ),
                 ],
@@ -267,7 +288,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _documentRow("Aadhaar Card", true),
           _documentRow("Photo", true),
           _documentRow("PAN Card", true),
-          // Removed the "Verify Documents" button here.
         ],
       ),
     );
@@ -334,11 +354,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: const Text('Yes', style: TextStyle(color: Colors.red)),
                         onPressed: () {
                           Navigator.of(context).pop();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                (Route<dynamic> route) => false,
-                          );
+                          // You need to import this screen
+                          // Navigator.pushAndRemoveUntil(
+                          //   context,
+                          //   MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          //       (Route<dynamic> route) => false,
+                          // );
                         },
                       ),
                     ],

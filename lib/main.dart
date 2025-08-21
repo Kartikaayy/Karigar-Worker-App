@@ -14,7 +14,7 @@ class KarigarApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Karigar App',
+      title: ' Call Karigar App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.deepOrange),
       home: const AppInitializer(),

@@ -13,6 +13,8 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> {
   String? aadhaarFile;
   String? photoFile;
   String? panFile;
+  String? ITIFile;
+  String? PoliceFile;
 
   Future<void> pickDocument(String type) async {
     final result = await FilePicker.platform.pickFiles();
@@ -28,6 +30,12 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> {
             break;
           case 'pan':
             panFile = result.files.single.name;
+            break;
+          case 'ITI':
+            ITIFile = result.files.single.name;
+            break;
+          case 'Police':
+            PoliceFile = result.files.single.name;
             break;
         }
       });
@@ -48,12 +56,18 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> {
         case 'pan':
           panFile = null;
           break;
+        case 'ITI':
+          ITIFile = null;
+          break;
+        case 'Police':
+          PoliceFile = null;
+          break;
       }
     });
   }
 
   void submitDocuments() {
-    if (aadhaarFile == null || photoFile == null || panFile == null) {
+    if (aadhaarFile == null || photoFile == null || panFile == null || ITIFile == null || PoliceFile ==null ) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -149,6 +163,18 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> {
                 type: "pan",
                 fileName: panFile,
                 onUpload: () => pickDocument('pan'),
+              ),
+              documentUploadTile(
+                title: "ITI Certificate",
+                type: "ITI",
+                fileName: ITIFile,
+                onUpload: () => pickDocument('ITI'),
+              ),
+              documentUploadTile(
+                title: "Police Verification Card",
+                type: "Police",
+                fileName: PoliceFile,
+                onUpload: () => pickDocument('Police'),
               ),
               const Spacer(),
               SizedBox(
