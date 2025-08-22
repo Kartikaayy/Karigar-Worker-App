@@ -7,6 +7,7 @@ import '../all temporary data/upcoming_details.dart';
 import '../screens/all_jobs.dart';
 import '../all temporary data/dummy_bookings.dart';
 import '../screens/add_service_page.dart';
+import '../screens/all_bookings_page.dart'; // Add this line
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -282,7 +283,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
             String? statusText = booking['status'] != 'pending' ? booking['status'].toString().toUpperCase() : null;
 
             return SizeTransition(
-              sizeFactor: index == 0 ? animation : AlwaysStoppedAnimation(1.0),
+              sizeFactor: index == 0 ? animation : const AlwaysStoppedAnimation(1.0),
               axisAlignment: -1.0,
               child: AnimatedOpacity(
                 opacity: booking['isRemoving'] == true ? 0.0 : 1.0,
@@ -375,12 +376,44 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                 ),
               ),
             );
-          }),
+          }).toList(),
+
+          // --- Add the new button here ---
+          const SizedBox(height: 20),
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7043),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AllBookingsPage(),
+                  ),
+                );
+              },
+              child: const Text(
+                "View All Bookings",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          // ---------------------------------
         ],
       ),
     );
   }
 }
+
 
 class UpcomingDetailsSheet extends StatelessWidget {
   final String service;
