@@ -9,14 +9,8 @@ buildscript {
     }
 
     dependencies {
-        implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-        // Import the Firebase BoM
-        implementation platform('com.google.firebase:firebase-bom:34.1.0')
-
-        // Add the dependencies for the Firebase products you want to use
-        implementation 'com.google.firebase:firebase-analytics'
-        implementation 'com.google.firebase:firebase-storage'
+        classpath "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     }
 }
 
@@ -37,4 +31,15 @@ subprojects {
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
+}
+buildscript {
+    ext.kotlin_version = "1.8.22"
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.6.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
+    }
 }

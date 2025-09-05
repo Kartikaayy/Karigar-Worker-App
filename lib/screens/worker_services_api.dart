@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkerServicesApi {
-  static const String baseUrl = "https://callkaarigar.onrender.com/api/worker-services";
+  static const String baseUrl = "https://call-karigar-backend.onrender.com/api/worker-services";
 
   /// GET: Fetch all services for a specific worker
   static Future<List<dynamic>> getWorkerServices() async {
