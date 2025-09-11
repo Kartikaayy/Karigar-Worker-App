@@ -55,7 +55,7 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
 
   Future<void> _fetchServices() async {
     try {
-      final response = await http.get(Uri.parse('https://call-karigar-backend.onrender.com/api/services'));
+      final response = await http.get(Uri.parse('https://callkaargarapi.rahulsh.me/api/services'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -112,14 +112,22 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
     await _fetchServices();
   }
 
-  Future<void> _navigateToAddService() async {
+  // Updated method to navigate to AddService with a default/fallback serviceId for FAB
+  Future<void> _navigateToAddService([String? serviceId]) async {
     final prefs = await SharedPreferences.getInstance();
     final workerId = prefs.getString('workerId');
     if (workerId != null && mounted) {
+      // If no serviceId provided (like from FAB), use the first service's ID or a default
+      String finalServiceId = serviceId ??
+          (_services.isNotEmpty ? _services.first['_id'] : 'default-service-id');
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AddServicePage(workerId: workerId),
+          builder: (context) => AddServicePage(
+            workerId: workerId,
+            serviceId: finalServiceId,
+          ),
         ),
       );
     } else if (mounted) {
@@ -138,6 +146,21 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
         ),
       );
     }
+  }
+
+  // Method to handle service tap with specific serviceId
+  void _onServiceTap(dynamic service) {
+    final serviceId = service['_id'];
+    print('Service ID: $serviceId');
+
+    // Print additional service details if needed
+    print('Service Title: ${service['title']}');
+    print('Service Description: ${service['description']}');
+    print('Service Category ID: ${service['service_categoryId']['_id']}');
+    print('Service Category Name: ${service['service_categoryId']['name']}');
+
+    // Navigate to AddServicePage with the selected serviceId
+    _navigateToAddService(serviceId);
   }
 
   @override
@@ -254,7 +277,7 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
       floatingActionButton: SlideTransition(
         position: _fabSlideAnimation,
         child: FloatingActionButton.extended(
-          onPressed: _navigateToAddService,
+          onPressed: () => _navigateToAddService(), // No serviceId, will use fallback
           backgroundColor: const Color(0xFFFF7043),
           foregroundColor: Colors.white,
           elevation: 8,
@@ -359,7 +382,7 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                onPressed: _navigateToAddService,
+                onPressed: () => _navigateToAddService(), // No serviceId, will use fallback
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Add First Service'),
                 style: ElevatedButton.styleFrom(
@@ -422,7 +445,7 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
                         shadowColor: const Color(0xFFFF7043).withOpacity(0.25),
                         borderRadius: BorderRadius.circular(20),
                         child: InkWell(
-                          onTap: () => _navigateToAddService(),
+                          onTap: () => _onServiceTap(service), // Passes the service object with its ID
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
                             padding: const EdgeInsets.all(20),

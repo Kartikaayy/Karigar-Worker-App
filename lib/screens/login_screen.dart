@@ -80,14 +80,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse("https://callkaarigar.onrender.com/api/users/login");
+    final url = Uri.parse("https://callkaargarapi.rahulsh.me/api/auth/login");
 
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': _emailController.text.trim(),
+          'identifier': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
         }),
       );
@@ -96,9 +96,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       print("response data $responseData");
 
       if (response.statusCode == 200) {
-        final token = responseData['token'];
-        final user = responseData['user'];
-        final workerId = user != null ? user['_id'] : null;
+        final data = responseData['data'];
+
+        final token = data != null ? data['token'] : null;
+        final user = data != null ? data['user'] : null;
+        final workerId = user != null ? user['id'] : null;
+
 
         print("✅ Login successful. JWT Token: $token");
         print("✅ Worker ID: $workerId");

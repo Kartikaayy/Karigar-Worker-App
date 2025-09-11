@@ -5,8 +5,13 @@ import 'dart:convert';
 
 class AddServicePage extends StatefulWidget {
   final String workerId;
+  final String serviceId; // Added dynamic serviceId parameter
 
-  const AddServicePage({super.key, required this.workerId});
+  const AddServicePage({
+    super.key,
+    required this.workerId,
+    required this.serviceId, // Made serviceId required
+  });
 
   @override
   State<AddServicePage> createState() => _AddServicePageState();
@@ -42,6 +47,9 @@ class _AddServicePageState extends State<AddServicePage> with TickerProviderStat
       curve: Curves.easeOutCubic,
     ));
     _animationController.forward();
+
+    // Debug print to show the received serviceId
+    print('AddServicePage initialized with serviceId: ${widget.serviceId}');
   }
 
   @override
@@ -112,14 +120,17 @@ class _AddServicePageState extends State<AddServicePage> with TickerProviderStat
       return;
     }
 
-    final url = Uri.parse('https://call-karigar-backend.onrender.com/api/worker-services');
+    final url = Uri.parse('https://callkaargarapi.rahulsh.me/api/worker-services');
     final Map<String, dynamic> requestBody = {
       'workerId': widget.workerId,
-      'serviceId': 'ad7135a3-5f8c-4486-b0e3-f60907e8b210',
+      'serviceId': widget.serviceId, // Using dynamic serviceId now
       'price': _priceController.text,
       'experience': _experienceController.text,
       'description': _descriptionController.text,
     };
+
+    // Debug print to show the request payload
+    print('Submitting service with payload: $requestBody');
 
     try {
       // 2. Add the Authorization header to your request

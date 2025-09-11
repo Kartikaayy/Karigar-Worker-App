@@ -23,14 +23,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _fabAnimationController;
   late Animation<double> _fabScaleAnimation;
-
-  final List<Widget> _pages = [
-    const ActiveJobsPage(),
-    const AllJobsPage(),
-    const EarningPage(),
-    const ProfilePage(),
-  ];
   String? _workerId;
+
+  // Initialize pages list as empty, will be populated after workerId is loaded
+  List<Widget> _pages = [];
 
   @override
   void initState() {
@@ -54,14 +50,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _loadWorkerId() async {
     final prefs = await SharedPreferences.getInstance();
+    final workerId = prefs.getString("workerId");
+    print("Worker ID retrieved in HomePage: $workerId");
+
     setState(() {
-      _workerId = prefs.getString("workerId");
-      print("Worker ID retrieved in HomePage: $_workerId");
+      _workerId = workerId;
+      // Initialize pages after workerId is loaded
+      _pages = [
+        const ActiveJobsPage(),
+        const AllJobsPage(),
+        EarningPage(workerId: workerId ?? ''), // Pass workerId to EarningPage if needed
+        ProfilePage(), // Pass workerId to ProfilePage
+      ];
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show loading if workerId is not loaded yet
+    if (_workerId == null || _pages.isEmpty) {
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBody: true,
       appBar: PreferredSize(
@@ -249,6 +274,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
+// Keep the rest of your ActiveJobsPage code exactly the same
 class ActiveJobsPage extends StatefulWidget {
   const ActiveJobsPage({super.key});
 
@@ -302,7 +328,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
 
     try {
       socket = io.io(
-        'https://call-kaarigar-server.onrender.com',
+        'https://callkaargarapi.rahulsh.me',
         io.OptionBuilder()
             .setTransports(['websocket'])
             .setAuth({'workerId': workerId})
@@ -343,7 +369,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
       }
 
       final response = await http.get(
-        Uri.parse('https://call-karigar-backend.onrender.com/api/bookings/worker'),
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/worker'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

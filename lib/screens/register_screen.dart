@@ -97,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse("https://callkaarigar.onrender.com/api/users/register");
+    final url = Uri.parse("https://callkaargarapi.rahulsh.me/api/auth/register");
 
     try {
       final response = await http.post(

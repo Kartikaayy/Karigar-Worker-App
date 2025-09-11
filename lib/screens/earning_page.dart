@@ -3,7 +3,9 @@ import '../all temporary data/completed_services_page.dart';
 import '../all temporary data/reviews_page.dart';
 
 class EarningPage extends StatefulWidget {
-  const EarningPage({super.key});
+  final String workerId; // Add workerId parameter
+
+  const EarningPage({super.key, required this.workerId});
 
   @override
   State<EarningPage> createState() => _EarningPageState();
@@ -351,7 +353,9 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ReviewsPage()),
+            MaterialPageRoute(
+              builder: (_) => ReviewsPage(workerId: widget.workerId), // Pass workerId here
+            ),
           );
         },
         borderRadius: BorderRadius.circular(20),

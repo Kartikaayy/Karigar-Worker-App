@@ -37,7 +37,7 @@ class _CategoriesPageState extends State<CategoriesPage> with TickerProviderStat
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('https://call-karigar-backend.onrender.com/api/service-categories'));
+      final response = await http.get(Uri.parse('https://callkaargarapi.rahulsh.me/api/service-categories'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

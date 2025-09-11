@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 // Recommended: Use a config file for production apps.
-const String _baseUrl = "https://callkaarigar.onrender.com/api";
+const String _baseUrl = "https://callkaargarapi.rahulsh.me/api";
 
 class ApiService {
   /// Fetches a user's profile using an authentication token.
@@ -13,7 +13,7 @@ class ApiService {
       return {'error': 'no_token', 'message': 'Authentication token is missing.'};
     }
 
-    final url = Uri.parse("$_baseUrl/users/profile");
+    final url = Uri.parse("$_baseUrl/users/me");
 
     try {
       final response = await http.get(
