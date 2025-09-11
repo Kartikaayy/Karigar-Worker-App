@@ -41,4 +41,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/mp_logo.png"
+  image_path: assets/mp_logo.png
+  adaptive_icon_background: "#1C0A4D"
+  adaptive_icon_foreground: assets/mp_logo.png
+  remove_alpha_ios: true
