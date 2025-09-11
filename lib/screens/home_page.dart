@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:convert';
-import 'package:socket_io_client/socket_io_client.dart' as io;
+// import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../screens/categories_page.dart';
 import '../screens/profile_page.dart';
 import '../screens/notification_page.dart';
@@ -289,7 +289,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
   late Animation<double> _fadeAnimation;
   bool _isLoading = true;
   String? _errorMessage;
-  late io.Socket socket;
+  // late io.Socket socket;
 
   @override
   void initState() {
@@ -305,58 +305,58 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _connectSocket();
+    // _connectSocket();
     _fetchBookings();
   }
 
   @override
   void dispose() {
-    socket.disconnect();
+    // socket.disconnect();
     _animationController.dispose();
     _refreshController.dispose();
     super.dispose();
   }
 
-  void _connectSocket() async {
-    final prefs = await SharedPreferences.getInstance();
-    final workerId = prefs.getString('workerId');
-
-    if (workerId == null) {
-      print('Worker ID not found. Cannot connect to socket.');
-      return;
-    }
-
-    try {
-      socket = io.io(
-        'https://callkaargarapi.rahulsh.me',
-        io.OptionBuilder()
-            .setTransports(['websocket'])
-            .setAuth({'workerId': workerId})
-            .build(),
-      );
-
-      socket.connect();
-
-      socket.onConnect((_) {
-        print('Socket connected: ${socket.id}');
-      });
-
-      socket.on('new_booking', (_) {
-        print('New booking received via socket!');
-        _fetchBookings();
-      });
-
-      socket.onDisconnect((_) {
-        print('Socket disconnected');
-      });
-
-      socket.on('error', (data) {
-        print('Socket error: $data');
-      });
-    } catch (e) {
-      print('Socket connection error: $e');
-    }
-  }
+  // void _connectSocket() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final workerId = prefs.getString('workerId');
+  //
+  //   if (workerId == null) {
+  //     print('Worker ID not found. Cannot connect to socket.');
+  //     return;
+  //   }
+  //
+  //   try {
+  //     socket = io.io(
+  //       'https://callkaargarapi.rahulsh.me',
+  //       io.OptionBuilder()
+  //           .setTransports(['websocket'])
+  //           .setAuth({'workerId': workerId})
+  //           .build(),
+  //     );
+  //
+  //     socket.connect();
+  //
+  //     socket.onConnect((_) {
+  //       print('Socket connected: ${socket.id}');
+  //     });
+  //
+  //     socket.on('new_booking', (_) {
+  //       print('New booking received via socket!');
+  //       _fetchBookings();
+  //     });
+  //
+  //     socket.onDisconnect((_) {
+  //       print('Socket disconnected');
+  //     });
+  //
+  //     socket.on('error', (data) {
+  //       print('Socket error: $data');
+  //     });
+  //   } catch (e) {
+  //     print('Socket connection error: $e');
+  //   }
+  // }
 
   Future<void> _fetchBookings() async {
     try {

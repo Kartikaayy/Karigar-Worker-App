@@ -10,7 +10,8 @@ class LandingPage extends StatefulWidget {
   State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin {
+class _LandingPageState extends State<LandingPage>
+    with TickerProviderStateMixin {
   bool documentsSubmitted = false;
   bool documentsVerified = false;
   late AnimationController _animationController;
@@ -73,7 +74,8 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
     }
   }
 
-  Future<void> _updateVerificationStatus({required bool submitted, required bool verified}) async {
+  Future<void> _updateVerificationStatus(
+      {required bool submitted, required bool verified}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('documentsSubmitted', submitted);
     await prefs.setBool('documentsVerified', verified);
@@ -106,7 +108,8 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                 color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.pending_actions_rounded, color: Colors.orange.shade600, size: 24),
+              child: Icon(Icons.pending_actions_rounded,
+                  color: Colors.orange.shade600, size: 24),
             ),
             const SizedBox(width: 16),
             const Expanded(
@@ -117,9 +120,9 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
             ),
           ],
         ),
-        content: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: const Text(
+        content: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Text(
             "Your documents have been submitted and are being reviewed by our team. You'll receive a notification once the verification is complete.",
             style: TextStyle(fontSize: 14, height: 1.4),
           ),
@@ -129,11 +132,14 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF7043),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Understood',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -174,7 +180,6 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
         body: SafeArea(
           child: Stack(
             children: [
-              // Main Content
               FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
@@ -183,12 +188,11 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                     children: [
                       // Header Section
                       Container(
-                        height: screenHeight * 0.6,
+                        height: screenHeight * 0.55, // slightly reduced
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Logo/Icon Section
                             Container(
                               padding: const EdgeInsets.all(30),
                               decoration: BoxDecoration(
@@ -202,16 +206,13 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                                   ),
                                 ],
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.handyman_rounded,
                                 size: 80,
                                 color: Colors.white,
                               ),
                             ),
-
                             const SizedBox(height: 40),
-
-                            // Welcome Text
                             const Text(
                               'Welcome to',
                               style: TextStyle(
@@ -258,75 +259,83 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Status Card
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: _getStatusGradient(),
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                            child: SingleChildScrollView( // ✅ FIX
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Status Card
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: _getStatusGradient(),
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                          _getStatusColor().withOpacity(0.2),
+                                          blurRadius: 15,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
                                     ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _getStatusColor().withOpacity(0.2),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color:
+                                            Colors.white.withOpacity(0.2),
+                                            borderRadius:
+                                            BorderRadius.circular(16),
+                                          ),
+                                          child: Icon(
+                                            _getStatusIcon(),
+                                            size: 48,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Text(
+                                          _getStatusTitle(),
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          _getStatusDescription(),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color:
+                                            Colors.white.withOpacity(0.9),
+                                            height: 1.4,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        child: Icon(
-                                          _getStatusIcon(),
-                                          size: 48,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Text(
-                                        _getStatusTitle(),
-                                        style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        _getStatusDescription(),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.white.withOpacity(0.9),
-                                          height: 1.4,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
 
-                                // Action Button
-                                Container(
-                                  width: double.infinity,
-                                  height: 60,
-                                  child: documentsSubmitted && !isVerified
-                                      ? _buildPendingButton()
-                                      : _buildActionButton(),
-                                ),
-                              ],
+                                  const SizedBox(height: 32),
+
+                                  // Action Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 60,
+                                    child: documentsSubmitted && !isVerified
+                                        ? _buildPendingButton()
+                                        : _buildActionButton(),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -336,68 +345,16 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                 ),
               ),
 
-              // Debug Buttons (Remove in production)
+              // Debug Buttons
               Positioned(
                 top: 16,
                 left: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _resetVerificationStatus,
-                      borderRadius: BorderRadius.circular(12),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          'Reset',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                child: _debugResetButton(),
               ),
-
               Positioned(
                 top: 16,
                 right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const HomePage()),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          'Skip',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                child: _debugSkipButton(),
               ),
             ],
           ),
@@ -406,6 +363,67 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
     );
   }
 
+  // --- Debug Buttons ---
+  Widget _debugResetButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _resetVerificationStatus,
+          borderRadius: BorderRadius.circular(12),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              'Reset',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _debugSkipButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              'Skip',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Status Helpers ---
   List<Color> _getStatusGradient() {
     if (documentsVerified) {
       return [Colors.green.shade400, Colors.green.shade600];
@@ -456,9 +474,9 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
     }
   }
 
+  // --- Buttons ---
   Widget _buildActionButton() {
     final isVerified = documentsSubmitted && documentsVerified;
-
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -469,7 +487,8 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: (isVerified ? Colors.green : const Color(0xFFFF7043)).withOpacity(0.4),
+            color: (isVerified ? Colors.green : const Color(0xFFFF7043))
+                .withOpacity(0.4),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -528,32 +547,28 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
                 ),
               ],
             ),
-            child: Container(
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withOpacity(0.8),
-                      ),
-                    ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                    AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Verification in Progress...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Verification in Progress...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

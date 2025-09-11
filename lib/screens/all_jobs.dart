@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../all temporary data/upcoming_details.dart';
-import '../all temporary data/dummy_bookings.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+import 'dart:convert';
 
 class AllJobsPage extends StatefulWidget {
   const AllJobsPage({super.key});
@@ -13,28 +15,12 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
   String selectedFilter = 'All';
   late AnimationController _animationController;
   late AnimationController _filterAnimationController;
+  late AnimationController _refreshController;
   late Animation<double> _fadeAnimation;
 
-  final List<Map<String, dynamic>> jobs = [
-    {
-      'status': 'Active',
-      'service': 'Electrical Wiring',
-      'description': 'New power outlet installation',
-      'location': 'Gwalior, MP',
-      'time': '1 hour ago',
-      'price': '₹1200',
-    },
-    {
-      'status': 'Completed',
-      'service': 'Fan Repair',
-      'description': 'Ceiling fan motor replacement',
-      'location': 'Ujjain, MP',
-      'time': 'Completed Yesterday',
-      'price': '₹700',
-    },
-  ];
-
-  late List<Map<String, dynamic>> allJobs;
+  List<Map<String, dynamic>> allJobs = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -47,30 +33,149 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    _refreshController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    allJobs = [
-      ...jobs,
-      ...upcomingBookings.map((booking) => {
-        'status': booking['status'] ?? 'Upcoming',
-        'service': booking['service'],
-        'description': booking['description'],
-        'location': booking['location'],
-        'time': booking['time'],
-        'price': booking['price'] != null ? '₹${booking['price']}' : '₹0',
-      }),
-    ];
-
-    _animationController.forward();
+    _fetchBookings();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _filterAnimationController.dispose();
+    _refreshController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchBookings() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception('Authentication token not found. Please login again.');
+      }
+
+      final response = await http.get(
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/worker'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        final bookingsData = jsonResponse['data'] as List? ?? [];
+
+        setState(() {
+          allJobs = bookingsData.map<Map<String, dynamic>>((booking) {
+            // Format the booking data to match your UI expectations
+            return {
+              '_id': booking['_id'] ?? '',
+              'status': _mapApiStatusToUI(booking['status'] ?? 'pending'),
+              'service': booking['workerServiceId']?['description'] ?? 'Unknown Service',
+              'description': booking['description'] ?? 'No description provided',
+              'location': _formatAddress(booking['address_id']),
+              'time': _formatBookingDate(booking['bookingDate']),
+              'price': '₹${booking['workerServiceId']?['price']?.toString() ?? '0'}',
+              'customerName': booking['customerId']?['name'] ?? 'Unknown Customer',
+              'customerPhone': booking['customerId']?['phone'] ?? '',
+              'rawData': booking, // Keep original data for reference
+            };
+          }).toList();
+          _isLoading = false;
+        });
+        _animationController.forward();
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication failed. Please login again.');
+      } else {
+        throw Exception('Failed to load bookings: HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching bookings: $e');
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _mapApiStatusToUI(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'pending':
+        return 'Upcoming';
+      case 'accepted':
+      case 'confirmed':
+        return 'Active';
+      case 'completed':
+        return 'Completed';
+      case 'rejected':
+      case 'cancelled':
+        return 'Rejected';
+      default:
+        return 'Upcoming';
+    }
+  }
+
+  // UPDATED CODE HERE
+  String _formatAddress(dynamic addressData) {
+    if (addressData == null) return 'Location not specified';
+
+    final addressLine = (addressData['addressLine'] ?? '') as String;
+    final city = (addressData['city'] ?? '') as String;
+    final state = (addressData['state'] ?? '') as String;
+
+    List<String> parts = [addressLine, city, state]
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    return parts.isNotEmpty ? parts.join(', ') : 'Location not specified';
+  }
+
+  String _formatBookingDate(dynamic bookingDate) {
+    if (bookingDate == null) return 'Date not specified';
+
+    try {
+      final date = DateTime.parse(bookingDate);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        if (difference.inHours == 0) {
+          return '${difference.inMinutes} minutes ago';
+        } else {
+          return '${difference.inHours} hours ago';
+        }
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return DateFormat('MMM d, yyyy').format(date);
+      }
+    } catch (e) {
+      return bookingDate.toString();
+    }
+  }
+
+  Future<void> _refreshBookings() async {
+    _refreshController.repeat();
+    await _fetchBookings();
+    _refreshController.stop();
   }
 
   void _updateStatus(int index, String status) {
@@ -102,6 +207,49 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
     }
 
     return counts;
+  }
+
+  Future<void> _updateBookingStatus(String bookingId, String newStatus) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      final response = await http.post(
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/status'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'status': newStatus.toLowerCase()}),
+      );
+
+      if (response.statusCode == 200) {
+        // Refresh the bookings list to reflect the change
+        _fetchBookings();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking status updated to ${newStatus.toLowerCase()}'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        throw Exception('Failed to update booking status');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: ${e.toString()}'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -172,38 +320,52 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                           ],
                         ),
                       ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          onPressed: _refreshBookings,
+                          icon: RotationTransition(
+                            turns: _refreshController,
+                            child: const Icon(Icons.refresh_rounded, color: Colors.white),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 20),
 
                   // Stats Cards
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildModernCountBox(
-                            '${jobCounts['Active']}',
-                            'Active',
-                            Colors.orange.shade400,
-                            Icons.play_circle_filled_rounded
-                        ),
-                        _buildModernCountBox(
-                            '${jobCounts['Upcoming']}',
-                            'Upcoming',
-                            Colors.blue.shade400,
-                            Icons.schedule_rounded
-                        ),
-                        _buildModernCountBox(
-                            '${jobCounts['Completed']}',
-                            'Completed',
-                            Colors.green.shade400,
-                            Icons.check_circle_rounded
-                        ),
-                      ],
+                  if (!_isLoading)
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildModernCountBox(
+                              '${jobCounts['Active']}',
+                              'Active',
+                              Colors.orange.shade400,
+                              Icons.play_circle_filled_rounded
+                          ),
+                          _buildModernCountBox(
+                              '${jobCounts['Upcoming']}',
+                              'Upcoming',
+                              Colors.blue.shade400,
+                              Icons.schedule_rounded
+                          ),
+                          _buildModernCountBox(
+                              '${jobCounts['Completed']}',
+                              'Completed',
+                              Colors.green.shade400,
+                              Icons.check_circle_rounded
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -231,53 +393,11 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                         end: Alignment.bottomCenter,
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        // Filter Section
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Filter Jobs',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: ['All', 'Active', 'Upcoming', 'Completed', 'Accepted', 'Rejected']
-                                      .map((filter) => _buildFilterChip(filter)).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Jobs List
-                        Expanded(
-                          child: filteredJobs.isEmpty
-                              ? _buildEmptyState()
-                              : FadeTransition(
-                            opacity: _fadeAnimation,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                              itemCount: filteredJobs.length,
-                              itemBuilder: (context, index) {
-                                final job = filteredJobs[index];
-                                int realIndex = allJobs.indexOf(job);
-                                return _buildEnhancedJobCard(job, realIndex, index);
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: _isLoading
+                        ? _buildLoadingState()
+                        : _errorMessage != null
+                        ? _buildErrorState()
+                        : _buildContentWithFilter(filteredJobs),
                   ),
                 ),
               ),
@@ -285,6 +405,141 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF7043).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7043)),
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Loading your bookings...',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.red.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Failed to Load Jobs',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error occurred',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchBookings,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7043),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentWithFilter(List<Map<String, dynamic>> filteredJobs) {
+    return Column(
+      children: [
+        // Filter Section
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter Jobs',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Active', 'Upcoming', 'Completed', 'Rejected']
+                      .map((filter) => _buildFilterChip(filter)).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Jobs List
+        Expanded(
+          child: filteredJobs.isEmpty
+              ? _buildEmptyState()
+              : FadeTransition(
+            opacity: _fadeAnimation,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              itemCount: filteredJobs.length,
+              itemBuilder: (context, index) {
+                final job = filteredJobs[index];
+                int realIndex = allJobs.indexOf(job);
+                return _buildEnhancedJobCard(job, realIndex, index);
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -581,6 +836,8 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                           color: Colors.grey.shade600,
                           height: 1.3,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
 
                       const SizedBox(height: 16),
@@ -588,31 +845,37 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                       // Location and Time
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.location_on_rounded,
-                                    size: 14,
-                                    color: Colors.orange.shade600),
-                                const SizedBox(width: 4),
-                                Text(
-                                  job['location'],
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.orange.shade600,
-                                    fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.location_on_rounded,
+                                      size: 14,
+                                      color: Colors.orange.shade600),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      job['location'],
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
@@ -682,8 +945,15 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
       backgroundColor: Colors.transparent,
       builder: (_) => _buildEnhancedBottomSheet(job, index),
     );
-    if (result != null) {
-      _updateStatus(index, result);
+    if (result != null && result != 'Completed' && result != 'Rejected') {
+      // Update status via API
+      final bookingId = job['_id'];
+      if (bookingId.isNotEmpty) {
+        await _updateBookingStatus(bookingId, result);
+      } else {
+        // Fallback to local update if no booking ID
+        _updateStatus(index, result);
+      }
     }
   }
 
@@ -748,7 +1018,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                         ),
                       ),
                       Text(
-                        'Service Details',
+                        'Booking Details',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -763,7 +1033,8 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
             const SizedBox(height: 24),
 
             // Details Section
-            _buildDetailRow(Icons.person_rounded, 'Customer', 'Customer Name'),
+            _buildDetailRow(Icons.person_rounded, 'Customer', job['customerName'] ?? 'N/A'),
+            _buildDetailRow(Icons.phone_rounded, 'Phone', job['customerPhone'] ?? 'N/A'),
             _buildDetailRow(Icons.schedule_rounded, 'Time', job['time']),
             _buildDetailRow(Icons.location_on_rounded, 'Location', job['location']),
             _buildDetailRow(Icons.description_rounded, 'Description', job['description']),
@@ -771,42 +1042,77 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
 
             const SizedBox(height: 32),
 
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, 'Rejected'),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Reject'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+            // Action Buttons (only show if status allows it)
+            if (job['status'] == 'Upcoming')
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context, 'rejected'),
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Reject'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, 'Accepted'),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Accept'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context, 'accepted'),
+                      icon: const Icon(Icons.check_rounded),
+                      label: const Text('Accept'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                       ),
                     ),
                   ),
+                ],
+              )
+            else if (job['status'] == 'Active')
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'completed'),
+                  icon: const Icon(Icons.check_circle_rounded),
+                  label: const Text('Mark as Completed'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
                 ),
-              ],
-            ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.visibility_rounded),
+                  label: const Text('Close'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -816,205 +1122,6 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF7043).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: const Color(0xFFFF7043), size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class UpcomingDetailsSheet extends StatelessWidget {
-  final String service;
-  final String customer;
-  final String time;
-  final String location;
-  final String description;
-  final String price;
-  final Function(String)? onAction;
-
-  const UpcomingDetailsSheet({
-    super.key,
-    required this.service,
-    required this.customer,
-    required this.time,
-    required this.location,
-    required this.description,
-    required this.price,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle Bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
-                    ),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: const Icon(Icons.work_rounded, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        service,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
-                        ),
-                      ),
-                      Text(
-                        'Service Request Details',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Details Cards
-            _buildDetailCard(Icons.person_rounded, 'Customer', customer),
-            _buildDetailCard(Icons.schedule_rounded, 'Date & Time', time),
-            _buildDetailCard(Icons.location_on_rounded, 'Address', location),
-            _buildDetailCard(Icons.description_rounded, 'Description', description),
-            _buildDetailCard(Icons.currency_rupee_rounded, 'Price', price),
-
-            const SizedBox(height: 32),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction?.call('Rejected'),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Reject'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction?.call('Accepted'),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Accept'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailCard(IconData icon, String label, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,

@@ -39,7 +39,7 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage> wit
       'required': true,
     },
     'certifications': { // Updated key name
-      'title': 'ITI Certificate',
+      'title': 'Skill Certificate',
       'icon': Icons.school_rounded,
       'color': Colors.purple,
       'description': 'Upload your technical certification',

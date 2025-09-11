@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart'; // Import for FilteringTextInputFormatter
 import 'dart:convert';
 import 'login_screen.dart';
 
@@ -28,6 +29,9 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
+
+    // Set the default role to 'worker'
+    _selectedRole = 'worker';
 
     // Initialize animations
     _fadeController = AnimationController(
@@ -83,9 +87,10 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
       return _showError("Enter a valid email address.");
     }
+    // Updated validation for 10-digit phone number
     if (phone.isEmpty) return _showError("Phone number is required.");
-    if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
-      return _showError("Enter a valid 10-digit phone number.");
+    if (phone.length != 10) {
+      return _showError("Phone number must be exactly 10 digits.");
     }
     if (password.isEmpty) return _showError("Password is required.");
     if (password.length < 6) {
@@ -381,12 +386,16 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             Icons.email_outlined,
             'Email Address',
             controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 18),
+          // Updated phone number input field
           _buildInputField(
             Icons.phone_outlined,
             'Phone Number',
             controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            maxLength: 10, // Restrict to a maximum of 10 characters
           ),
           const SizedBox(height: 18),
           _buildInputField(
@@ -407,6 +416,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       String hint, {
         bool isPassword = false,
         required TextEditingController controller,
+        TextInputType keyboardType = TextInputType.text,
+        int? maxLength, // Add maxLength parameter
       }) {
     return Container(
       decoration: BoxDecoration(
@@ -432,6 +443,12 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
           fontSize: 16,
           fontWeight: FontWeight.w400,
         ),
+        keyboardType: keyboardType, // Set keyboard type
+        maxLength: maxLength, // Apply maxLength
+        inputFormatters: [
+          if (keyboardType == TextInputType.phone)
+            FilteringTextInputFormatter.digitsOnly, // Allow only digits for phone number
+        ],
         decoration: InputDecoration(
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
@@ -454,6 +471,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             ),
           ),
           hintText: hint,
+          counterText: '', // Hide the maxLength counter
           hintStyle: TextStyle(
             color: Colors.white.withOpacity(0.6),
             fontSize: 16,
@@ -497,6 +515,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     );
   }
 
+  // UPDATED: This widget now only shows the 'worker' role
   Widget _buildRoleDropdown() {
     return Container(
       decoration: BoxDecoration(
@@ -521,23 +540,13 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             _selectedRole = value;
           });
         },
-        items: [
+        items: const [
           DropdownMenuItem(
             value: 'worker',
             child: Text(
               'Worker',
               style: TextStyle(
-                color: Colors.deepPurple.shade800,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          DropdownMenuItem(
-            value: 'admin',
-            child: Text(
-              'Admin',
-              style: TextStyle(
-                color: Colors.deepPurple.shade800,
+                color: Colors.deepPurple,
                 fontWeight: FontWeight.w500,
               ),
             ),
