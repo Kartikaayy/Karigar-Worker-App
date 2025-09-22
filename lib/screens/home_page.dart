@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:convert';
-// import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../screens/categories_page.dart';
 import '../screens/profile_page.dart';
 import '../screens/notification_page.dart';
@@ -274,7 +274,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
-// Keep the rest of your ActiveJobsPage code exactly the same
+// Enhanced ActiveJobsPage with improved UI and status colors
 class ActiveJobsPage extends StatefulWidget {
   const ActiveJobsPage({super.key});
 
@@ -289,7 +289,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
   late Animation<double> _fadeAnimation;
   bool _isLoading = true;
   String? _errorMessage;
-  // late io.Socket socket;
+  late io.Socket socket;
 
   @override
   void initState() {
@@ -305,61 +305,92 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    // _connectSocket();
     _fetchBookings();
   }
 
   @override
   void dispose() {
-    // socket.disconnect();
     _animationController.dispose();
     _refreshController.dispose();
     super.dispose();
   }
 
-  // void _connectSocket() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final workerId = prefs.getString('workerId');
-  //
-  //   if (workerId == null) {
-  //     print('Worker ID not found. Cannot connect to socket.');
-  //     return;
-  //   }
-  //
-  //   try {
-  //     socket = io.io(
-  //       'https://callkaargarapi.rahulsh.me',
-  //       io.OptionBuilder()
-  //           .setTransports(['websocket'])
-  //           .setAuth({'workerId': workerId})
-  //           .build(),
-  //     );
-  //
-  //     socket.connect();
-  //
-  //     socket.onConnect((_) {
-  //       print('Socket connected: ${socket.id}');
-  //     });
-  //
-  //     socket.on('new_booking', (_) {
-  //       print('New booking received via socket!');
-  //       _fetchBookings();
-  //     });
-  //
-  //     socket.onDisconnect((_) {
-  //       print('Socket disconnected');
-  //     });
-  //
-  //     socket.on('error', (data) {
-  //       print('Socket error: $data');
-  //     });
-  //   } catch (e) {
-  //     print('Socket connection error: $e');
-  //   }
-  // }
+  // Enhanced status mapping similar to AllJobsPage
+  String _mapApiStatusToUI(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'pending':
+        return 'Pending';
+      case 'accepted':
+      case 'confirmed':
+        return 'Confirmed';
+      case 'in_progress':
+      case 'active':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'rejected':
+      case 'cancelled':
+        return 'Rejected';
+      default:
+        return 'Pending';
+    }
+  }
+
+  // Enhanced color mapping based on status
+  Map<String, dynamic> _getStatusStyle(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return {
+          'primaryColor': Colors.orange.shade600,
+          'backgroundColor': Colors.orange.shade50,
+          'statusIcon': Icons.schedule_rounded,
+          'gradient': [Colors.orange.shade600, Colors.orange.shade500],
+        };
+      case 'confirmed':
+        return {
+          'primaryColor': Colors.blue.shade600,
+          'backgroundColor': Colors.blue.shade50,
+          'statusIcon': Icons.check_circle_outline_rounded,
+          'gradient': [Colors.blue.shade600, Colors.blue.shade500],
+        };
+      case 'in progress':
+        return {
+          'primaryColor': Colors.purple.shade600,
+          'backgroundColor': Colors.purple.shade50,
+          'statusIcon': Icons.work_outline_rounded,
+          'gradient': [Colors.purple.shade600, Colors.purple.shade500],
+        };
+      case 'completed':
+        return {
+          'primaryColor': Colors.green.shade600,
+          'backgroundColor': Colors.green.shade50,
+          'statusIcon': Icons.check_circle_rounded,
+          'gradient': [Colors.green.shade600, Colors.green.shade500],
+        };
+      case 'rejected':
+        return {
+          'primaryColor': Colors.red.shade600,
+          'backgroundColor': Colors.red.shade50,
+          'statusIcon': Icons.cancel_rounded,
+          'gradient': [Colors.red.shade600, Colors.red.shade500],
+        };
+      default:
+        return {
+          'primaryColor': Colors.grey.shade600,
+          'backgroundColor': Colors.grey.shade50,
+          'statusIcon': Icons.help_outline_rounded,
+          'gradient': [Colors.grey.shade600, Colors.grey.shade500],
+        };
+    }
+  }
 
   Future<void> _fetchBookings() async {
     try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
       final prefs = await SharedPreferences.getInstance();
       final workerId = prefs.getString('workerId');
       final token = prefs.getString('token');
@@ -378,10 +409,28 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
+        final bookingsData = jsonResponse['data'] as List? ?? [];
+
         setState(() {
-          _bookings = List<Map<String, dynamic>>.from(jsonResponse['data']);
+          _bookings = bookingsData.map<Map<String, dynamic>>((booking) {
+            return {
+              '_id': booking['_id'] ?? '',
+              'status': _mapApiStatusToUI(booking['status'] ?? 'pending'),
+              'rawStatus': booking['status'] ?? 'pending',
+              'service': booking['workerServiceId']?['description'] ?? 'Unknown Service',
+              'description': booking['description'] ?? 'No description provided',
+              'location': _formatAddress(booking['address_id']),
+              'time': _formatBookingDate(booking['bookingDate']),
+              'price': booking['workerServiceId']?['price']?.toString() ?? '0',
+              'customerName': booking['customerId']?['name'] ?? 'Unknown Customer',
+              'customerPhone': booking['customerId']?['phone'] ?? '',
+              'bookingDate': booking['bookingDate'],
+              'address_id': booking['address_id'],
+              'workerServiceId': booking['workerServiceId'],
+              'customerId': booking['customerId'],
+            };
+          }).toList();
           _isLoading = false;
-          _errorMessage = null;
         });
         _animationController.forward();
       } else {
@@ -395,6 +444,27 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     }
   }
 
+  String _formatAddress(dynamic addressData) {
+    if (addressData == null) return 'Location not specified';
+
+    final addressLine = (addressData['addressLine'] ?? '') as String;
+    final city = (addressData['city'] ?? '') as String;
+
+    List<String> parts = [addressLine, city].where((part) => part.isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(', ') : 'Location not specified';
+  }
+
+  String _formatBookingDate(dynamic bookingDate) {
+    if (bookingDate == null) return 'Date not specified';
+
+    try {
+      final date = DateTime.parse(bookingDate);
+      return DateFormat('MMM d, h:mm a').format(date);
+    } catch (e) {
+      return bookingDate.toString();
+    }
+  }
+
   Future<void> _refreshBookings() async {
     _refreshController.repeat();
     await _fetchBookings();
@@ -402,33 +472,19 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
   }
 
   void _showBookingDetails(Map<String, dynamic> booking) async {
-    final serviceName = booking['workerServiceId']?['description'] ?? 'No service name';
-    final customerName = booking['customerId']?['name'] ?? 'N/A';
+    final serviceName = booking['service'] ?? 'No service name';
+    final customerName = booking['customerName'] ?? 'N/A';
     final description = booking['description'] ?? 'No description provided.';
-    final price = booking['workerServiceId']?['price']?.toString() ?? 'N/A';
-    String formattedDate = 'N/A';
-    if (booking['bookingDate'] != null) {
-      try {
-        final date = DateTime.parse(booking['bookingDate']);
-        formattedDate = DateFormat('d MMM, h:mm a').format(date);
-      } catch (e) {
-        formattedDate = booking['bookingDate'].toString();
-      }
-    }
-
-    String addressText = 'N/A';
-    if (booking['address_id'] != null) {
-      final address = booking['address_id'];
-      final addressLine = address['addressLine'] ?? '';
-      final city = address['city'] ?? '';
-      addressText = '$addressLine, $city'.trim();
-    }
+    final price = booking['price'] ?? 'N/A';
+    final formattedDate = booking['time'] ?? 'N/A';
+    final addressText = booking['location'] ?? 'N/A';
 
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _buildEnhancedBottomSheet(
+        booking,
         serviceName,
         customerName,
         formattedDate,
@@ -448,6 +504,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
   }
 
   Widget _buildEnhancedBottomSheet(
+      Map<String, dynamic> booking,
       String service,
       String customer,
       String time,
@@ -455,6 +512,8 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
       String description,
       String price,
       ) {
+    final statusStyle = _getStatusStyle(booking['status']);
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -488,121 +547,272 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
 
             const SizedBox(height: 24),
 
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
+            // Enhanced Header with Status
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: statusStyle['gradient']),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: statusStyle['primaryColor'].withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    borderRadius: BorderRadius.circular(15),
+                    child: Icon(statusStyle['statusIcon'], color: Colors.white, size: 24),
                   ),
-                  child: const Icon(Icons.work_rounded, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        service,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Booking Details',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
+                        Text(
+                          booking['status'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      '₹$price',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 24),
 
             // Details Section
-            _buildDetailRow(Icons.person_rounded, 'Customer', customer),
-            _buildDetailRow(Icons.schedule_rounded, 'Date & Time', time),
-            _buildDetailRow(Icons.location_on_rounded, 'Address', location),
-            _buildDetailRow(Icons.description_rounded, 'Description', description),
-            _buildDetailRow(Icons.currency_rupee_rounded, 'Price', '₹$price'),
+            _buildDetailRow(Icons.person_rounded, 'Customer', customer, Colors.blue),
+            _buildDetailRow(Icons.schedule_rounded, 'Date & Time', time, Colors.purple),
+            _buildDetailRow(Icons.location_on_rounded, 'Address', location, Colors.orange),
+            _buildDetailRow(Icons.description_rounded, 'Description', description, Colors.indigo),
 
             const SizedBox(height: 32),
 
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      bool? confirm = await _showRejectDialog();
-                      if (confirm == true) {
-                        Navigator.pop(context, 'rejected');
-                      }
-                    },
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Reject'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, 'accepted'),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Accept'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Dynamic Action Buttons based on status
+            _buildActionButtons(booking),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildActionButtons(Map<String, dynamic> booking) {
+    String status = booking['status'].toLowerCase();
+
+    if (status == 'pending') {
+      return Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [Colors.red.shade600, Colors.red.shade500]),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.shade600.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  bool? confirm = await _showRejectDialog();
+                  if (confirm == true) {
+                    Navigator.pop(context, 'rejected');
+                  }
+                },
+                icon: const Icon(Icons.close_rounded),
+                label: const Text('Reject'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [Colors.green.shade600, Colors.green.shade500]),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.shade600.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, 'accepted'),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Accept'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else if (status == 'confirmed') {
+      return SizedBox(
+        width: double.infinity,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.green.shade600, Colors.green.shade500]),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.shade600.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, 'completed'),
+            icon: const Icon(Icons.check_circle_rounded),
+            label: const Text('Mark as Completed'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else if (status == 'in progress') {
+      return SizedBox(
+        width: double.infinity,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.green.shade600, Colors.green.shade500]),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.shade600.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, 'complete'),
+            icon: const Icon(Icons.check_circle_rounded),
+            label: const Text('Mark as Complete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      return SizedBox(
+        width: double.infinity,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.grey.shade600, Colors.grey.shade500]),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.visibility_rounded),
+            label: const Text('Close'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, MaterialColor colorScheme) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        gradient: LinearGradient(
+          colors: [colorScheme.shade50, Colors.white],
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: colorScheme.shade200),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF7043).withOpacity(0.1),
+              gradient: LinearGradient(colors: [colorScheme.shade500, colorScheme.shade400]),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFFFF7043), size: 18),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -613,17 +823,17 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: colorScheme.shade600,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C3E50),
+                    color: colorScheme.shade700,
                   ),
                 ),
               ],
@@ -674,48 +884,81 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     );
   }
 
-  void _updateStatus(String bookingId, String status) async {
+  Future<void> _updateStatus(String bookingId, String newStatus) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+
       if (token == null) {
-        print('Token not found. Cannot update booking status.');
-        return;
+        throw Exception('Authentication token not found');
+      }
+
+      String apiAction;
+      switch (newStatus.toLowerCase()) {
+        case 'accepted':
+        case 'active':
+          apiAction = 'accept';
+          break;
+        case 'rejected':
+        case 'cancelled':
+          apiAction = 'reject';
+          break;
+        case 'completed':
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Booking marked as completed'),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+          setState(() {
+            final jobIndex = _bookings.indexWhere((job) => job['_id'] == bookingId);
+            if (jobIndex != -1) {
+              _bookings[jobIndex]['status'] = 'Completed';
+            }
+          });
+          return;
+        default:
+          throw Exception('Unsupported status: $newStatus');
       }
 
       final response = await http.post(
-        Uri.parse('https://call-kaarigar-server.onrender.com/api/bookings/$bookingId/status'),
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'status': status}),
+        body: jsonEncode({'action': apiAction}),
       );
 
       if (response.statusCode == 200) {
-        int index = _bookings.indexWhere((booking) => booking['_id'] == bookingId);
-        if (index != -1) {
-          if (status == 'rejected') {
-            setState(() {
-              _bookings[index]['isRemoving'] = true;
-            });
-            Future.delayed(const Duration(milliseconds: 300), () {
-              setState(() {
-                _bookings.removeAt(index);
-              });
-            });
-          } else {
-            setState(() {
-              _bookings[index]['status'] = status;
-            });
-          }
-        }
         _fetchBookings();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking ${apiAction}ed successfully'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
       } else {
-        print('Failed to update booking status: ${response.statusCode}');
+        final errorResponse = json.decode(response.body);
+        throw Exception(errorResponse['message'] ?? 'Failed to update booking status');
       }
     } catch (e) {
-      print('Error updating booking status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating status: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
@@ -950,7 +1193,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                 ),
                 const SizedBox(width: 12),
                 const Text(
-                  "Upcoming Bookings",
+                  "Active Bookings",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -1006,7 +1249,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                       child: AnimatedOpacity(
                         opacity: booking['isRemoving'] == true ? 0.0 : 1.0,
                         duration: const Duration(milliseconds: 300),
-                        child: _buildBookingCard(booking, index),
+                        child: _buildEnhancedBookingCard(booking, index),
                       ),
                     );
                   },
@@ -1015,53 +1258,53 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
             ),
           ),
 
-          // View All Button
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
-                ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF7043).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final homeState = context.findAncestorStateOfType<_HomePageState>();
-                  if (homeState != null) {
-                    homeState.setState(() {
-                      homeState._currentIndex = 1;
-                    });
-                  }
-                },
-                icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
-                label: const Text(
-                  "View All Bookings",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                ),
-              ),
-            ),
-          ),
+        //   // View All Button
+        //   Padding(
+        //     padding: const EdgeInsets.all(24),
+        //     child: Container(
+        //       width: double.infinity,
+        //       height: 56,
+        //       decoration: BoxDecoration(
+        //         gradient: const LinearGradient(
+        //           colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
+        //         ),
+        //         borderRadius: BorderRadius.circular(28),
+        //         boxShadow: [
+        //           BoxShadow(
+        //             color: const Color(0xFFFF7043).withOpacity(0.3),
+        //             blurRadius: 12,
+        //             offset: const Offset(0, 6),
+        //           ),
+        //         ],
+        //       ),
+        //       child: ElevatedButton.icon(
+        //         onPressed: () {
+        //           final homeState = context.findAncestorStateOfType<_HomePageState>();
+        //           if (homeState != null) {
+        //             homeState.setState(() {
+        //               homeState._currentIndex = 1;
+        //             });
+        //           }
+        //         },
+        //         icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
+        //         label: const Text(
+        //           "View All Bookings",
+        //           style: TextStyle(
+        //             color: Colors.white,
+        //             fontSize: 16,
+        //             fontWeight: FontWeight.bold,
+        //           ),
+        //         ),
+        //         style: ElevatedButton.styleFrom(
+        //           backgroundColor: Colors.transparent,
+        //           shadowColor: Colors.transparent,
+        //           shape: RoundedRectangleBorder(
+        //             borderRadius: BorderRadius.circular(28),
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //   ),
         ],
       ),
     );
@@ -1088,7 +1331,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
             ),
             const SizedBox(height: 24),
             const Text(
-              'No Bookings Yet',
+              'No Active Bookings',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1097,7 +1340,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
             ),
             const SizedBox(height: 8),
             Text(
-              'Your upcoming bookings will appear here',
+              'Your active bookings will appear here',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey.shade600,
@@ -1110,208 +1353,373 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     );
   }
 
-  Widget _buildBookingCard(Map<String, dynamic> booking, int index) {
-    Color primaryColor;
-    Color backgroundColor;
-    IconData statusIcon;
-    String status = booking['status'] ?? 'pending';
-
-    switch (status.toLowerCase()) {
-      case 'accepted':
-        primaryColor = Colors.green.shade600;
-        backgroundColor = Colors.green.shade50;
-        statusIcon = Icons.check_circle_rounded;
-        break;
-      case 'rejected':
-        primaryColor = Colors.red.shade600;
-        backgroundColor = Colors.red.shade50;
-        statusIcon = Icons.cancel_rounded;
-        break;
-      default:
-        primaryColor = Colors.orange.shade600;
-        backgroundColor = Colors.orange.shade50;
-        statusIcon = Icons.schedule_rounded;
-    }
-
-    String formattedDate = 'N/A';
-    if (booking['bookingDate'] != null) {
-      try {
-        final date = DateTime.parse(booking['bookingDate']);
-        formattedDate = DateFormat('d MMM, h:mm a').format(date);
-      } catch (e) {
-        formattedDate = booking['bookingDate'].toString();
-      }
-    }
-
-    String addressText = 'N/A';
-    if (booking['address_id'] != null) {
-      final address = booking['address_id'];
-      final addressLine = address['addressLine'] ?? '';
-      final city = address['city'] ?? '';
-      addressText = '$addressLine, $city'.trim();
-    }
+  Widget _buildEnhancedBookingCard(Map<String, dynamic> booking, int index) {
+    final statusStyle = _getStatusStyle(booking['status']);
+    final primaryColor = statusStyle['primaryColor'];
+    final backgroundColor = statusStyle['backgroundColor'];
+    final statusIcon = statusStyle['statusIcon'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Material(
-        elevation: 4,
-        shadowColor: primaryColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
+        elevation: 6,
+        shadowColor: primaryColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             gradient: LinearGradient(
-              colors: [Colors.white, backgroundColor],
+              colors: [Colors.white, backgroundColor.withOpacity(0.3)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             border: Border.all(
               color: primaryColor.withOpacity(0.2),
-              width: 1,
+              width: 1.5,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Row
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [primaryColor, primaryColor.withOpacity(0.8)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primaryColor.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Icon(statusIcon, color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  if (status != 'pending')
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Enhanced Header Row with Status
+                Row(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [primaryColor, primaryColor.withOpacity(0.8)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(statusIcon, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: primaryColor.withOpacity(0.3)),
                       ),
                       child: Text(
-                        status.toUpperCase(),
+                        booking['status'],
                         style: TextStyle(
                           color: primaryColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 13,
                         ),
                       ),
                     ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF7043).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFFFF7043)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'New',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: const Color(0xFFFF7043),
-                            fontWeight: FontWeight.bold,
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF7043).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
+                        ],
+                      ),
+                      child: Text(
+                        '₹${booking['price']}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+
+                // Customer Info Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade50, Colors.white],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue.shade100),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: Colors.blue.shade600,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              booking['customerName'] ?? 'Unknown Customer',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                            if (booking['customerPhone'] != null && booking['customerPhone'].isNotEmpty)
+                              Text(
+                                booking['customerPhone'],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (booking['customerPhone'] != null && booking['customerPhone'].isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.phone_rounded,
+                            color: Colors.green.shade600,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Service Title
+                Text(
+                  booking['service'],
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Description
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Text(
+                    booking['description'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Location and Time
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.orange.shade50, Colors.orange.shade100],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.location_on_rounded,
+                                size: 16,
+                                color: Colors.orange.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Location',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.orange.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    booking['location'],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.purple.shade50, Colors.purple.shade100],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.purple.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.access_time_rounded,
+                                size: 16,
+                                color: Colors.purple.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Time',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.purple.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    booking['time'],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.purple.shade700,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+
+                // Dynamic Action Button based on status
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: statusStyle['gradient']),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Service Title
-              Text(
-                booking['workerServiceId']?['description'] ?? 'No service name',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Details
-              _buildInfoRow(Icons.person_rounded, 'Customer', booking['customerId']?['name'] ?? 'N/A'),
-              const SizedBox(height: 8),
-              _buildInfoRow(Icons.schedule_rounded, 'Date & Time', formattedDate),
-              const SizedBox(height: 8),
-              _buildInfoRow(Icons.location_on_rounded, 'Address', addressText),
-
-              const SizedBox(height: 16),
-
-              // Action Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showBookingDetails(booking),
-                  icon: const Icon(Icons.visibility_rounded, size: 18),
-                  label: const Text('View Details'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF7043),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showBookingDetails(booking),
+                      icon: Icon(
+                        booking['status'].toLowerCase() == 'pending' ? Icons.visibility_rounded :
+                        booking['status'].toLowerCase() == 'confirmed' ? Icons.play_circle_filled_rounded :
+                        booking['status'].toLowerCase() == 'in progress' ? Icons.check_circle_rounded :
+                        Icons.visibility_rounded,
+                        size: 20,
+                      ),
+                      label: Text(
+                        booking['status'].toLowerCase() == 'pending' ? 'Review & Accept' :
+                        booking['status'].toLowerCase() == 'confirmed' ? 'Mark Completed' :
+                        booking['status'].toLowerCase() == 'in progress' ? 'Mark Complete' :
+                        'View Details',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
                     ),
-                    elevation: 2,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey.shade600),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF2C3E50),
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

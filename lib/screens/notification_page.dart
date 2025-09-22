@@ -110,6 +110,7 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         'id': '1',
         'title': 'New Job Request',
         'message': 'You have a new job request for AC Installation in Bhopal.',
+        'details': 'Customer: Rajesh Kumar\nLocation: MP Nagar, Bhopal\nService: AC Installation\nBudget: ₹5,000-₹8,000\nDate: Tomorrow 10:00 AM\n\nPlease contact the customer to confirm availability.',
         'type': 'job_request',
         'createdAt': DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String(),
         'read': false,
@@ -118,6 +119,7 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         'id': '2',
         'title': 'Payment Received',
         'message': '₹3,800 payment received for Painting Service completed yesterday.',
+        'details': 'Transaction ID: TXN123456789\nService: Wall Painting\nCustomer: Priya Sharma\nAmount: ₹3,800\nPayment Method: UPI\nStatus: Completed\n\nThank you for your excellent service!',
         'type': 'payment',
         'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
         'read': false,
@@ -126,6 +128,7 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         'id': '3',
         'title': 'Profile Verified',
         'message': 'Congratulations! Your documents have been successfully verified.',
+        'details': 'Your profile has been successfully verified! You can now:\n\n• Accept job requests\n• Receive payments directly\n• Access premium features\n• Get priority customer support\n\nStart earning with CallKaarigar today!',
         'type': 'verification',
         'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
         'read': true,
@@ -134,6 +137,7 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         'id': '4',
         'title': 'Service Completed',
         'message': 'Great job! Your plumbing service has been marked as completed.',
+        'details': 'Service Details:\nType: Plumbing Repair\nCustomer: Amit Patel\nDuration: 2 hours\nRating: 4.8/5\n\nCustomer feedback: "Excellent work! Very professional and quick service."\n\nPayment will be processed within 24 hours.',
         'type': 'system',
         'createdAt': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
         'read': true,
@@ -174,6 +178,251 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
       // Handle error silently for better UX
       print('Error marking notification as read: $e');
     }
+  }
+
+  Future<void> _deleteNotification(String notificationId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) return;
+
+      final response = await http.delete(
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/notifications/$notificationId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          notifications.removeWhere((n) => n['id'] == notificationId);
+        });
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notification deleted successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // For development, remove from local list
+      setState(() {
+        notifications.removeWhere((n) => n['id'] == notificationId);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification deleted'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showNotificationPopup(Map<String, dynamic> notification) {
+    final notificationType = notification['type'] ?? 'default';
+    final config = notificationTypes[notificationType] ?? notificationTypes['default']!;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        config['color'] as Color,
+                        (config['color'] as Color).withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        config['icon'],
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          notification['title'] ?? 'Notification',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Time
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getTimeAgo(notification['createdAt'] ?? DateTime.now().toIso8601String()),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Message
+                        Text(
+                          'Summary',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          notification['message'] ?? 'No message',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF2C3E50),
+                            height: 1.4,
+                          ),
+                        ),
+
+                        if (notification['details'] != null) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            'Details',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Text(
+                              notification['details'],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF2C3E50),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Actions
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      if (notification['read'] != true)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              _markAsRead(notification['id'].toString());
+                              Navigator.of(context).pop();
+                            },
+                            icon: const Icon(Icons.mark_email_read_rounded),
+                            label: const Text('Mark as Read'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: config['color'] as Color,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (notification['read'] != true) const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _deleteNotification(notification['id'].toString());
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Delete'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _getTimeAgo(String dateTimeString) {
@@ -500,135 +749,193 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () {
+            _showNotificationPopup(notification);
             if (isUnread) {
               _markAsRead(notification['id'].toString());
             }
           },
           borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white,
-                  isUnread
-                      ? (config['color'] as Color).withOpacity(0.02)
-                      : Colors.grey.shade50,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(
-                color: isUnread
-                    ? (config['color'] as Color).withOpacity(0.2)
-                    : Colors.grey.shade200,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            config['color'] as Color,
-                            (config['color'] as Color).withOpacity(0.8),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        config['icon'],
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    if (isUnread)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade500,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        notification['title'] ?? 'Notification',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                          color: const Color(0xFF2C3E50),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        notification['message'] ?? 'No message',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _getTimeAgo(notification['createdAt'] ?? DateTime.now().toIso8601String()),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (isUnread) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.shade500,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'NEW',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white,
+                      isUnread
+                          ? (config['color'] as Color).withOpacity(0.02)
+                          : Colors.grey.shade50,
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: isUnread
+                        ? (config['color'] as Color).withOpacity(0.2)
+                        : Colors.grey.shade200,
+                    width: 1,
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                config['color'] as Color,
+                                (config['color'] as Color).withOpacity(0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            config['icon'],
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        if (isUnread)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade500,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            notification['title'] ?? 'Notification',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                              color: const Color(0xFF2C3E50),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            notification['message'] ?? 'No message',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _getTimeAgo(notification['createdAt'] ?? DateTime.now().toIso8601String()),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (isUnread) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade500,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'NEW',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Delete button in top-right corner
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () {
+                    // Show confirmation dialog
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Delete Notification'),
+                          content: const Text('Are you sure you want to delete this notification?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                _deleteNotification(notification['id'].toString());
+                              },
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade500,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.shade200,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
