@@ -27,12 +27,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     "bio": "Experienced professional dedicated to delivering quality service",
     "skills": "Plumbing, Pipe fitting, Water systems",
     "experienceYears": "5",
-    // Address section fields
-    "addressLine": "Bandra-chowk",
-    "addressCity": "Mumbai",
-    "addressState": "Maharashtra",
-    "postalCode": "400001",
-    "country": "India",
   };
 
   bool _isLoading = true;
@@ -57,6 +51,25 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  void _showSuccessMessage(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(message),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Future<void> _fetchProfileFromAPI() async {
@@ -101,12 +114,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
         profileData["bio"] = data["bio"]?.toString() ?? profileData["bio"]!;
         profileData["skills"] = (data["skills"] as List<dynamic>?)?.join(", ") ?? profileData["skills"]!;
         profileData["experienceYears"] = data["experienceYears"]?.toString() ?? profileData["experienceYears"]!;
-        // Update address section if available in API response
-        profileData["addressLine"] = data["addressLine"]?.toString() ?? profileData["addressLine"]!;
-        profileData["addressCity"] = data["city"]?.toString() ?? profileData["addressCity"]!;
-        profileData["addressState"] = data["state"]?.toString() ?? profileData["addressState"]!;
-        profileData["postalCode"] = data["postalCode"]?.toString() ?? profileData["postalCode"]!;
-        profileData["country"] = data["country"]?.toString() ?? profileData["country"]!;
       });
     }
   }
@@ -129,12 +136,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
         profileData["bio"] = prefs.getString('bio') ?? profileData["bio"]!;
         profileData["skills"] = prefs.getString('skills') ?? profileData["skills"]!;
         profileData["experienceYears"] = prefs.getString('experienceYears') ?? profileData["experienceYears"]!;
-        // Load address section data
-        profileData["addressLine"] = prefs.getString('addressLine') ?? profileData["addressLine"]!;
-        profileData["addressCity"] = prefs.getString('addressCity') ?? profileData["addressCity"]!;
-        profileData["addressState"] = prefs.getString('addressState') ?? profileData["addressState"]!;
-        profileData["postalCode"] = prefs.getString('postalCode') ?? profileData["postalCode"]!;
-        profileData["country"] = prefs.getString('country') ?? profileData["country"]!;
       });
     }
   }
@@ -155,12 +156,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     prefs.setString('bio', profileData["bio"]!);
     prefs.setString('skills', profileData["skills"]!);
     prefs.setString('experienceYears', profileData["experienceYears"]!);
-    // Save address section data
-    prefs.setString('addressLine', profileData["addressLine"]!);
-    prefs.setString('addressCity', profileData["addressCity"]!);
-    prefs.setString('addressState', profileData["addressState"]!);
-    prefs.setString('postalCode', profileData["postalCode"]!);
-    prefs.setString('country', profileData["country"]!);
   }
 
   void _handleApiError(Map<String, dynamic> error) {
@@ -477,27 +472,9 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
               const SizedBox(height: 20),
 
-              // Address Section
-              _buildAnimatedCard(
-                delay: 400,
-                child: _buildInfoCard(
-                  title: "Address",
-                  icon: Icons.location_on_outlined,
-                  details: {
-                    "Address Line": profileData["addressLine"]!,
-                    "City": profileData["addressCity"]!,
-                    "State": profileData["addressState"]!,
-                    "Postal Code": profileData["postalCode"]!,
-                    "Country": profileData["country"]!,
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
               // Account Settings
               _buildAnimatedCard(
-                delay: 500,
+                delay: 400,
                 child: _buildAccountSettingsCard(),
               ),
             ],

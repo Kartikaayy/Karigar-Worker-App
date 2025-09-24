@@ -122,4 +122,249 @@ class ApiService {
       };
     }
   }
+
+  // static Future<Map<String, dynamic>> createAddress(
+  //     String token,
+  //     Map<String, dynamic> addressData
+  //     ) async {
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('$_baseUrl/addresses'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //       body: json.encode({
+  //         'label': addressData['label'] ?? 'Home',
+  //         'addressLine': addressData['addressLine'],
+  //         'city': addressData['city'],
+  //         'state': addressData['state'],
+  //         'postalCode': addressData['postalCode'],
+  //         'country': addressData['country'],
+  //         'isPrimary': addressData['isPrimary'] ?? false,
+  //       }),
+  //     );
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       return {
+  //         'success': true,
+  //         'data': json.decode(response.body),
+  //         'message': 'Address created successfully'
+  //       };
+  //     } else {
+  //       final errorData = json.decode(response.body);
+  //       return {
+  //         'error': 'create_failed',
+  //         'message': errorData['message'] ?? 'Failed to create address',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'network_error',
+  //       'message': 'Network error: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // /// Get user's specific addresses
+  // /// GET /addresses/my-addresses/{workerId}
+  // static Future<Map<String, dynamic>> getUserAddresses(
+  //     String token,
+  //     String workerId
+  //     ) async {
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('$_baseUrl/addresses/my-addresses'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final responseData = json.decode(response.body);
+  //       return {
+  //         'success': true,
+  //         'addresses': responseData['addresses'] ?? responseData['data'] ?? [],
+  //         'message': 'Addresses fetched successfully'
+  //       };
+  //     } else if (response.statusCode == 404) {
+  //       // No addresses found - this is not an error, just empty list
+  //       return {
+  //         'success': true,
+  //         'addresses': [],
+  //         'message': 'No addresses found'
+  //       };
+  //     } else {
+  //       final errorData = json.decode(response.body);
+  //       return {
+  //         'error': 'fetch_failed',
+  //         'message': errorData['message'] ?? 'Failed to fetch addresses',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'network_error',
+  //       'message': 'Network error: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // /// Update an existing address (Full Update)
+  // /// PUT /addresses/my-addresses/{workerId}
+  // static Future<Map<String, dynamic>> updateAddress(
+  //     String token,
+  //     String workerId,
+  //     Map<String, dynamic> addressData
+  //     ) async {
+  //   try {
+  //     final response = await http.put(
+  //       Uri.parse('$_baseUrl/addresses/my-addresses/$workerId'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //       body: json.encode({
+  //         'label': addressData['label'] ?? 'Home',
+  //         'addressLine': addressData['addressLine'],
+  //         'city': addressData['city'],
+  //         'state': addressData['state'],
+  //         'postalCode': addressData['postalCode'],
+  //         'country': addressData['country'],
+  //         'isPrimary': addressData['isPrimary'] ?? false,
+  //       }),
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       return {
+  //         'success': true,
+  //         'data': json.decode(response.body),
+  //         'message': 'Address updated successfully'
+  //       };
+  //     } else {
+  //       final errorData = json.decode(response.body);
+  //       return {
+  //         'error': 'update_failed',
+  //         'message': errorData['message'] ?? 'Failed to update address',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'network_error',
+  //       'message': 'Network error: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // /// Delete an address (if needed)
+  // /// DELETE /addresses/{addressId}
+  // static Future<Map<String, dynamic>> deleteAddress(
+  //     String token,
+  //     String addressId
+  //     ) async {
+  //   try {
+  //     final response = await http.delete(
+  //       Uri.parse('$_baseUrl/addresses/my-addresses/$addressId'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 204) {
+  //       return {
+  //         'success': true,
+  //         'message': 'Address deleted successfully'
+  //       };
+  //     } else {
+  //       final errorData = json.decode(response.body);
+  //       return {
+  //         'error': 'delete_failed',
+  //         'message': errorData['message'] ?? 'Failed to delete address',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'network_error',
+  //       'message': 'Network error: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // /// Set address as primary
+  // /// PATCH /addresses/{addressId}/primary
+  // static Future<Map<String, dynamic>> setPrimaryAddress(
+  //     String token,
+  //     String addressId
+  //     ) async {
+  //   try {
+  //     final response = await http.patch(
+  //       Uri.parse('$_baseUrl/addresses/$addressId/primary'),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       return {
+  //         'success': true,
+  //         'data': json.decode(response.body),
+  //         'message': 'Primary address updated successfully'
+  //       };
+  //     } else {
+  //       final errorData = json.decode(response.body);
+  //       return {
+  //         'error': 'primary_failed',
+  //         'message': errorData['message'] ?? 'Failed to set primary address',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'network_error',
+  //       'message': 'Network error: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // // Helper method to handle common API response patterns
+  // static Map<String, dynamic> _handleResponse(http.Response response, String operation) {
+  //   try {
+  //     final responseData = json.decode(response.body);
+  //
+  //     if (response.statusCode >= 200 && response.statusCode < 300) {
+  //       return {
+  //         'success': true,
+  //         'data': responseData,
+  //         'message': '$operation completed successfully'
+  //       };
+  //     } else {
+  //       return {
+  //         'error': '${operation.toLowerCase()}_failed',
+  //         'message': responseData['message'] ?? '$operation failed',
+  //         'statusCode': response.statusCode
+  //       };
+  //     }
+  //   } catch (e) {
+  //     return {
+  //       'error': 'parse_error',
+  //       'message': 'Failed to parse server response: ${e.toString()}'
+  //     };
+  //   }
+  // }
+  //
+  // // Debug method to log API calls (remove in production)
+  // static void _logApiCall(String method, String endpoint, {Map<String, String>? headers, String? body}) {
+  //   print('=== API Call ===');
+  //   print('Method: $method');
+  //   print('Endpoint: $endpoint');
+  //   if (headers != null) print('Headers: $headers');
+  //   if (body != null) print('Body: $body');
+  //   print('===============');
+  // }
 }

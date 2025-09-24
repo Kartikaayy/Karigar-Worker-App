@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../all temporary data/completed_services_page.dart';
-import '../all temporary data/reviews_page.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:call_karigar_worker_application/all temporary data/completed_services_page.dart';
+import 'package:call_karigar_worker_application/all temporary data/reviews_page.dart';
 
 class EarningPage extends StatefulWidget {
   final String workerId; // Add workerId parameter
@@ -15,6 +18,15 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  // New state variables for dynamic data
+  double totalEarnings = 0.0;
+  double lastPayoutAmount = 0.0;
+  String lastPayoutDate = 'N/A';
+  double rating = 0.0;
+  int reviewsCount = 0;
+  bool isLoading = true;
+  String errorMessage = '';
 
   @override
   void initState() {
@@ -33,6 +45,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
       parent: _animationController,
       curve: Curves.easeOutCubic,
     ));
+    _fetchEarningsData(); // Call the new method to fetch data
     _animationController.forward();
   }
 
@@ -40,6 +53,98 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchEarningsData() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception('Authentication token not found.');
+      }
+
+      // API call to get earnings summary and services
+      final earningsResponse = await http.get(
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/payments/worker'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      // API call to get reviews and ratings
+      final reviewsResponse = await http.get(
+        Uri.parse('https://callkaargarapi.rahulsh.me/api/reviews/worker/${widget.workerId}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (earningsResponse.statusCode == 200) {
+        final earningsData = json.decode(earningsResponse.body);
+        final List<dynamic> payments = earningsData['data'] ?? [];
+
+        double total = 0;
+        double lastAmount = 0;
+        String lastDate = 'N/A';
+
+        if (payments.isNotEmpty) {
+          // Calculate total earnings
+          for (var payment in payments) {
+            final amount = payment['amount'] ?? 0;
+            total += amount.toDouble();
+          }
+
+          // Get last payout details
+          final latestPayment = payments.first;
+          lastAmount = (latestPayment['amount'] ?? 0).toDouble();
+          lastDate = latestPayment['createdAt'] ?? 'N/A';
+        }
+
+        setState(() {
+          totalEarnings = total;
+          lastPayoutAmount = lastAmount;
+          lastPayoutDate = lastDate;
+        });
+      } else {
+        throw Exception('Failed to load earnings data.');
+      }
+
+      if (reviewsResponse.statusCode == 200) {
+        final reviewsData = json.decode(reviewsResponse.body);
+        final List<dynamic> reviews = reviewsData['data'] ?? [];
+
+        double totalRating = 0;
+        for (var review in reviews) {
+          totalRating += (review['rating'] ?? 0).toDouble();
+        }
+
+        setState(() {
+          reviewsCount = reviews.length;
+          if (reviews.isNotEmpty) {
+            rating = totalRating / reviewsCount;
+          } else {
+            rating = 0.0;
+          }
+        });
+      } else {
+        throw Exception('Failed to load reviews data.');
+      }
+
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+      });
+      print('Error fetching data: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -137,7 +242,9 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                       opacity: _fadeAnimation,
                       child: SlideTransition(
                         position: _slideAnimation,
-                        child: ListView(
+                        child: isLoading
+                            ? Center(child: CircularProgressIndicator(color: Color(0xFFFF7043)))
+                            : ListView(
                           padding: const EdgeInsets.all(24),
                           children: [
                             // Total Earnings Card
@@ -156,49 +263,49 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
 
                             const SizedBox(height: 32),
 
-                            // Recent Payouts Section
-                            _buildAnimatedCard(
-                              delay: 400,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              const Color(0xFFFF7043).withOpacity(0.1),
-                                              const Color(0xFFFF7043).withOpacity(0.05),
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Icon(
-                                          Icons.history_rounded,
-                                          color: const Color(0xFFFF7043),
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        "Recent Payouts",
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2C3E50),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _buildEnhancedPayoutTile("Painting Service", "2 days ago", "₹3,800", Icons.format_paint_rounded),
-                                  _buildEnhancedPayoutTile("Electrical Wiring", "5 days ago", "₹1,200", Icons.electrical_services_rounded),
-                                  _buildEnhancedPayoutTile("AC Installation", "Last week", "₹2,500", Icons.ac_unit_rounded),
-                                ],
-                              ),
-                            ),
+                            // // Recent Payouts Section (You can fetch this dynamically too)
+                            // _buildAnimatedCard(
+                            //   delay: 400,
+                            //   child: Column(
+                            //     crossAxisAlignment: CrossAxisAlignment.start,
+                            //     children: [
+                            //       Row(
+                            //         children: [
+                            //           Container(
+                            //             padding: const EdgeInsets.all(8),
+                            //             decoration: BoxDecoration(
+                            //               gradient: LinearGradient(
+                            //                 colors: [
+                            //                   const Color(0xFFFF7043).withOpacity(0.1),
+                            //                   const Color(0xFFFF7043).withOpacity(0.05),
+                            //                 ],
+                            //               ),
+                            //               borderRadius: BorderRadius.circular(8),
+                            //             ),
+                            //             child: Icon(
+                            //               Icons.history_rounded,
+                            //               color: const Color(0xFFFF7043),
+                            //               size: 20,
+                            //             ),
+                            //           ),
+                            //           const SizedBox(width: 12),
+                            //           const Text(
+                            //             "Recent Payouts",
+                            //             style: TextStyle(
+                            //               fontSize: 18,
+                            //               fontWeight: FontWeight.bold,
+                            //               color: Color(0xFF2C3E50),
+                            //             ),
+                            //           ),
+                            //         ],
+                            //       ),
+                            //       const SizedBox(height: 20),
+                            //       _buildEnhancedPayoutTile("Painting Service", "2 days ago", "₹3,800", Icons.format_paint_rounded),
+                            //       _buildEnhancedPayoutTile("Electrical Wiring", "5 days ago", "₹1,200", Icons.electrical_services_rounded),
+                            //       _buildEnhancedPayoutTile("AC Installation", "Last week", "₹2,500", Icons.ac_unit_rounded),
+                            //     ],
+                            //   ),
+                           // ),
                           ],
                         ),
                       ),
@@ -269,7 +376,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                         const Icon(Icons.trending_up_rounded, color: Colors.white, size: 16),
                         const SizedBox(width: 4),
                         Text(
-                          '+12%',
+                          '+12%', // This can also be made dynamic
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -291,9 +398,9 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                "₹12,460",
-                style: TextStyle(
+              Text(
+                "₹${totalEarnings.toStringAsFixed(0)}",
+                style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -312,7 +419,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                     const Icon(Icons.payments_rounded, color: Colors.white, size: 14),
                     const SizedBox(width: 6),
                     Text(
-                      "Last payout: ₹3,800 • 2 days ago",
+                      "Last payout: ₹${lastPayoutAmount.toStringAsFixed(0)} • $lastPayoutDate",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,
@@ -457,7 +564,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                         Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          "4.8",
+                          rating.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -473,7 +580,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "10 reviews",
+                          "$reviewsCount reviews",
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -488,7 +595,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: FractionallySizedBox(
-                            widthFactor: 0.96, // 4.8/5.0
+                            widthFactor: (rating / 5.0).clamp(0.0, 1.0),
                             alignment: Alignment.centerLeft,
                             child: Container(
                               decoration: BoxDecoration(
