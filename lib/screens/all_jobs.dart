@@ -125,7 +125,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
               'description': booking['description'] ?? 'No description provided',
               'location': _formatAddress(booking['address_id']),
               'time': _formatBookingDate(booking['bookingDate']),
-              'price': '₹${booking['workerServiceId']?['price']?.toString() ?? '0'}',
+              'price': (booking['totalAmount'] ?? '0').toString(),
               'customerName': booking['customerId']?['name'] ?? 'Unknown Customer',
               'customerPhone': booking['customerId']?['phone'] ?? '',
               'rawData': booking,
@@ -234,48 +234,40 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
         throw Exception('Authentication token not found');
       }
 
-      // Map the UI status to API action
-      String apiAction;
+      String apiEndpoint;
+      String requestBody = '';
+      String successMessage = '';
+
+      // Map the UI status to appropriate API endpoint and request body
       switch (newStatus.toLowerCase()) {
         case 'accepted':
         case 'active':
-          apiAction = 'accept';
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
+          requestBody = jsonEncode({'action': 'accept'});
+          successMessage = 'Booking accepted successfully';
           break;
         case 'rejected':
         case 'cancelled':
-          apiAction = 'reject';
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
+          requestBody = jsonEncode({'action': 'reject'});
+          successMessage = 'Booking rejected successfully';
           break;
         case 'completed':
-        // For completed status, you might need a different endpoint
-        // For now, we'll skip API call and just update locally
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Booking marked as completed'),
-              backgroundColor: Colors.green.shade600,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-          // Update local state
-          setState(() {
-            final jobIndex = allJobs.indexWhere((job) => job['_id'] == bookingId);
-            if (jobIndex != -1) {
-              allJobs[jobIndex]['status'] = 'Completed';
-            }
-          });
-          return;
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/complete';
+          requestBody = '{}'; // Empty JSON object for complete endpoint
+          successMessage = 'Booking marked as completed';
+          break;
         default:
           throw Exception('Unsupported status: $newStatus');
       }
 
       final response = await http.post(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request'),
+        Uri.parse(apiEndpoint),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'action': apiAction}),
+        body: requestBody,
       );
 
       print('Update Status Response: ${response.statusCode}');
@@ -286,7 +278,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Booking ${apiAction}ed successfully'),
+            content: Text(successMessage),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -874,7 +866,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                               ],
                             ),
                             child: Text(
-                              job['price'],
+                              '₹${job['price']}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -1272,7 +1264,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            job['price'],
+                            '₹${job['price']}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

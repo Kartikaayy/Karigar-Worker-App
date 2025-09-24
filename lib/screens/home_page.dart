@@ -1,3 +1,4 @@
+// Enhanced ActiveJobsPage with improved UI and status colors
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -323,9 +324,9 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
       case 'accepted':
       case 'confirmed':
         return 'Confirmed';
-      case 'in_progress':
+      case 'in-progress':
       case 'active':
-        return 'In Progress';
+        return 'in-progress';
       case 'completed':
         return 'Completed';
       case 'rejected':
@@ -353,7 +354,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
           'statusIcon': Icons.check_circle_outline_rounded,
           'gradient': [Colors.blue.shade600, Colors.blue.shade500],
         };
-      case 'in progress':
+      case 'in-progress':
         return {
           'primaryColor': Colors.purple.shade600,
           'backgroundColor': Colors.purple.shade50,
@@ -421,7 +422,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
               'description': booking['description'] ?? 'No description provided',
               'location': _formatAddress(booking['address_id']),
               'time': _formatBookingDate(booking['bookingDate']),
-              'price': booking['workerServiceId']?['price']?.toString() ?? '0',
+              'price': (booking['totalAmount'] ?? '0').toString(),
               'customerName': booking['customerId']?['name'] ?? 'Unknown Customer',
               'customerPhone': booking['customerId']?['phone'] ?? '',
               'bookingDate': booking['bookingDate'],
@@ -499,6 +500,9 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
         _updateStatus(booking['_id']!, 'accepted');
       } else if (result == 'rejected') {
         _updateStatus(booking['_id']!, 'rejected');
+      }
+      else{
+        _updateStatus(booking['_id']!, 'completed');
       }
     }
   }
@@ -735,7 +739,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
           ),
         ),
       );
-    } else if (status == 'in progress') {
+    } else if (status == 'in-progress') {
       return SizedBox(
         width: double.infinity,
         child: Container(
@@ -893,52 +897,51 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
         throw Exception('Authentication token not found');
       }
 
-      String apiAction;
+      String apiEndpoint;
+      String requestBody = '';
+      String successMessage = '';
+
+      // Map the UI status to appropriate API endpoint and request body
       switch (newStatus.toLowerCase()) {
         case 'accepted':
         case 'active':
-          apiAction = 'accept';
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
+          requestBody = jsonEncode({'action': 'accept'});
+          successMessage = 'Booking accepted successfully';
           break;
         case 'rejected':
         case 'cancelled':
-          apiAction = 'reject';
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
+          requestBody = jsonEncode({'action': 'reject'});
+          successMessage = 'Booking rejected successfully';
           break;
         case 'completed':
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Booking marked as completed'),
-              backgroundColor: Colors.green.shade600,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-          setState(() {
-            final jobIndex = _bookings.indexWhere((job) => job['_id'] == bookingId);
-            if (jobIndex != -1) {
-              _bookings[jobIndex]['status'] = 'Completed';
-            }
-          });
-          return;
+          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/complete';
+          requestBody = '{}'; // Empty JSON object for complete endpoint
+          successMessage = 'Booking marked as completed';
+          break;
         default:
           throw Exception('Unsupported status: $newStatus');
       }
 
       final response = await http.post(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request'),
+        Uri.parse(apiEndpoint),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'action': apiAction}),
+        body: requestBody,
       );
 
+      print('Update Status Response: ${response.statusCode}');
+      print('Update Status Body: ${response.body}');
+
       if (response.statusCode == 200) {
-        _fetchBookings();
+        _fetchBookings(); // Refresh the data
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Booking ${apiAction}ed successfully'),
+            content: Text(successMessage),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -950,6 +953,7 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
         throw Exception(errorResponse['message'] ?? 'Failed to update booking status');
       }
     } catch (e) {
+      print('Error updating status: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating status: ${e.toString().replaceAll('Exception: ', '')}'),
@@ -1258,53 +1262,53 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
             ),
           ),
 
-        //   // View All Button
-        //   Padding(
-        //     padding: const EdgeInsets.all(24),
-        //     child: Container(
-        //       width: double.infinity,
-        //       height: 56,
-        //       decoration: BoxDecoration(
-        //         gradient: const LinearGradient(
-        //           colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
-        //         ),
-        //         borderRadius: BorderRadius.circular(28),
-        //         boxShadow: [
-        //           BoxShadow(
-        //             color: const Color(0xFFFF7043).withOpacity(0.3),
-        //             blurRadius: 12,
-        //             offset: const Offset(0, 6),
-        //           ),
-        //         ],
-        //       ),
-        //       child: ElevatedButton.icon(
-        //         onPressed: () {
-        //           final homeState = context.findAncestorStateOfType<_HomePageState>();
-        //           if (homeState != null) {
-        //             homeState.setState(() {
-        //               homeState._currentIndex = 1;
-        //             });
-        //           }
-        //         },
-        //         icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
-        //         label: const Text(
-        //           "View All Bookings",
-        //           style: TextStyle(
-        //             color: Colors.white,
-        //             fontSize: 16,
-        //             fontWeight: FontWeight.bold,
-        //           ),
-        //         ),
-        //         style: ElevatedButton.styleFrom(
-        //           backgroundColor: Colors.transparent,
-        //           shadowColor: Colors.transparent,
-        //           shape: RoundedRectangleBorder(
-        //             borderRadius: BorderRadius.circular(28),
-        //           ),
-        //         ),
-        //       ),
-        //     ),
-        //   ),
+          //   // View All Button
+          //   Padding(
+          //     padding: const EdgeInsets.all(24),
+          //     child: Container(
+          //       width: double.infinity,
+          //       height: 56,
+          //       decoration: BoxDecoration(
+          //         gradient: const LinearGradient(
+          //           colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
+          //         ),
+          //         borderRadius: BorderRadius.circular(28),
+          //         boxShadow: [
+          //           BoxShadow(
+          //             color: const Color(0xFFFF7043).withOpacity(0.3),
+          //             blurRadius: 12,
+          //             offset: const Offset(0, 6),
+          //           ),
+          //         ],
+          //       ),
+          //       child: ElevatedButton.icon(
+          //         onPressed: () {
+          //           final homeState = context.findAncestorStateOfType<_HomePageState>();
+          //           if (homeState != null) {
+          //             homeState.setState(() {
+          //               homeState._currentIndex = 1;
+          //             });
+          //           }
+          //         },
+          //         icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
+          //         label: const Text(
+          //           "View All Bookings",
+          //           style: TextStyle(
+          //             color: Colors.white,
+          //             fontSize: 16,
+          //             fontWeight: FontWeight.bold,
+          //           ),
+          //         ),
+          //         style: ElevatedButton.styleFrom(
+          //           backgroundColor: Colors.transparent,
+          //           shadowColor: Colors.transparent,
+          //           shape: RoundedRectangleBorder(
+          //             borderRadius: BorderRadius.circular(28),
+          //           ),
+          //         ),
+          //       ),
+          //     ),
+          //   ),
         ],
       ),
     );
@@ -1358,6 +1362,79 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
     final primaryColor = statusStyle['primaryColor'];
     final backgroundColor = statusStyle['backgroundColor'];
     final statusIcon = statusStyle['statusIcon'];
+
+    final bool isConfirmed = booking['status'].toLowerCase() == 'confirmed';
+
+    void _showQrCodeDialog(BuildContext context) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Scan QR Code',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/main_qr.png', // Path to your QR code image
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Booking ID: ${booking['_id']}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1423,6 +1500,23 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                       ),
                     ),
                     const Spacer(),
+                    if (isConfirmed)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: InkWell(
+                          onTap: () {
+                            _showQrCodeDialog(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.qr_code_rounded, color: Colors.blue.shade600, size: 20),
+                          ),
+                        ),
+                      ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
@@ -1689,14 +1783,14 @@ class _ActiveJobsPageState extends State<ActiveJobsPage> with TickerProviderStat
                       icon: Icon(
                         booking['status'].toLowerCase() == 'pending' ? Icons.visibility_rounded :
                         booking['status'].toLowerCase() == 'confirmed' ? Icons.play_circle_filled_rounded :
-                        booking['status'].toLowerCase() == 'in progress' ? Icons.check_circle_rounded :
+                        booking['status'].toLowerCase() == 'in-progress' ? Icons.check_circle_rounded :
                         Icons.visibility_rounded,
                         size: 20,
                       ),
                       label: Text(
                         booking['status'].toLowerCase() == 'pending' ? 'Review & Accept' :
                         booking['status'].toLowerCase() == 'confirmed' ? 'Mark Completed' :
-                        booking['status'].toLowerCase() == 'in progress' ? 'Mark Complete' :
+                        booking['status'].toLowerCase() == 'in-progress' ? 'Mark Complete' :
                         'View Details',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
