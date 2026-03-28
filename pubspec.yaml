@@ -1,0 +1,48 @@
+name: call_karigar_worker_application
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.1.0
+  animated_text_kit: ^4.2.2  # ✅ Add this line
+  get: ^4.7.2
+  file_picker: ^10.3.0
+  image_picker: ^1.0.0
+  shared_preferences: ^2.2.2  # <-- Add this for persistence
+  path_provider: ^2.1.2       # <-- For storing images in app directory (Android/iOS)
+  universal_html: ^2.2.4
+  socket_io_client: ^2.0.3+1
+  http: ^1.4.0
+  dio: ^5.9.0
+  intl: ^0.20.2
+  flutter_launcher_icons: ^0.14.4
+
+
+dev_dependencies:
+  flutter_launcher_icons: "^0.14.4"
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/mp_logo.png
+    - assets/avatar.png
+    - assets/main_qr.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/mp_logo.png
+  adaptive_icon_background: "#1C0A4D"
+  adaptive_icon_foreground: assets/mp_logo.png
+  remove_alpha_ios: true
