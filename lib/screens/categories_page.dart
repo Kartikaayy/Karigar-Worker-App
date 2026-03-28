@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'api/api.dart'; // ← single import for all API classes
 import 'services_by_category_page.dart';
 
 class CategoriesPage extends StatefulWidget {
@@ -37,10 +36,11 @@ class _CategoriesPageState extends State<CategoriesPage> with TickerProviderStat
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('https://callkaargarapi.rahulsh.me/api/service-categories'));
+      // ── UPDATED: uses ServiceCategoriesApi ──────────────────────────
+      final data = await ServiceCategoriesApi.getCategories();
+      // ─────────────────────────────────────────────────────────────────
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data != null) {
         setState(() {
           _categories = data['data'];
           _isLoading = false;

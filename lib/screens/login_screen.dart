@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'register_screen.dart';
 import 'landing_page.dart';
+import 'forgot_password_screen.dart';
+import 'api/api.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -80,28 +80,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse("https://callkaargarapi.rahulsh.me/api/auth/login");
-
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'identifier': _emailController.text.trim(),
-          'password': _passwordController.text.trim(),
-        }),
+      final responseData = await AuthApi.login(
+        identifier: email,
+        password: password,
       );
 
-      final responseData = jsonDecode(response.body);
       print("response data $responseData");
 
-      if (response.statusCode == 200) {
+      if (responseData['data'] != null) {
         final data = responseData['data'];
-
-        final token = data != null ? data['token'] : null;
-        final user = data != null ? data['user'] : null;
+        final token = data['token'];
+        final user = data['user'];
         final workerId = user != null ? user['id'] : null;
-
 
         print("✅ Login successful. JWT Token: $token");
         print("✅ Worker ID: $workerId");
@@ -125,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           MaterialPageRoute(builder: (_) => const LandingPage()),
         );
       } else {
-        print("❌ Login failed. Response: ${response.body}");
+        print("❌ Login failed. Response: $responseData");
         _showError(responseData['message'] ?? "Login failed");
       }
     } catch (e) {
@@ -388,7 +379,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-                // Add forgot password functionality
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ForgotPasswordScreen()),
+                );
               },
               child: Text(
                 "Forgot Password?",

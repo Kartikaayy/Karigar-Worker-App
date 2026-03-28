@@ -42,7 +42,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       });
 
       final response = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/reviews/worker/${widget.workerId}'),
+        Uri.parse('https://call-karigar-backend-production.up.railway.app/api/reviews/worker/${widget.workerId}'),
         headers: {
           'Content-Type': 'application/json',
         },

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api/api.dart'; // ← single import for all API classes
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class AddServicePage extends StatefulWidget {
   final String workerId;
@@ -120,30 +119,25 @@ class _AddServicePageState extends State<AddServicePage> with TickerProviderStat
       return;
     }
 
-    final url = Uri.parse('https://callkaargarapi.rahulsh.me/api/worker-services');
     final Map<String, dynamic> requestBody = {
       'workerId': widget.workerId,
-      'serviceId': widget.serviceId, // Using dynamic serviceId now
+      'serviceId': widget.serviceId,
       'price': _priceController.text,
       'experience': _experienceController.text,
       'description': _descriptionController.text,
     };
 
-    // Debug print to show the request payload
     print('Submitting service with payload: $requestBody');
 
     try {
-      // 2. Add the Authorization header to your request
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
+      // ── UPDATED: uses WorkerServicesApi ──────────────────────────────
+      final success = await WorkerServicesApi.addWorkerService(
+        token: token,
+        serviceData: requestBody,
       );
+      // ─────────────────────────────────────────────────────────────────
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -179,9 +173,8 @@ class _AddServicePageState extends State<AddServicePage> with TickerProviderStat
           Navigator.pop(context);
         }
       } else {
-        final responseData = json.decode(response.body);
         if (mounted) {
-          _showErrorSnackBar('Submission failed: ${responseData['message'] ?? 'An error occurred'}');
+          _showErrorSnackBar('Submission failed. Please try again.');
         }
       }
     } catch (e) {

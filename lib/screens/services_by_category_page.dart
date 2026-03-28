@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'api/api.dart'; // ← single import for all API classes
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_service_page.dart';
 
@@ -55,10 +54,11 @@ class _ServicesByCategoryPageState extends State<ServicesByCategoryPage> with Ti
 
   Future<void> _fetchServices() async {
     try {
-      final response = await http.get(Uri.parse('https://callkaargarapi.rahulsh.me/api/services'));
+      // ── UPDATED: uses ServicesApi ─────────────────────────────────────
+      final data = await ServicesApi.getAllServices();
+      // ─────────────────────────────────────────────────────────────────
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data != null) {
         final allServices = data['data'] as List;
         final filteredServices = allServices.where((service) {
           final category = service['service_categoryId'];

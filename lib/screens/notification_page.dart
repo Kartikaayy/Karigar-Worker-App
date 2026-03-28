@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api/api.dart'; // ← single import for all API classes
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -74,16 +73,11 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         throw Exception('Authentication token not found');
       }
 
-      final response = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/notifications'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // ── UPDATED: uses NotificationsApi ──────────────────────────────
+      final data = await NotificationsApi.getNotifications(token);
+      // ─────────────────────────────────────────────────────────────────
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data != null) {
         setState(() {
           notifications = List<Map<String, dynamic>>.from(data['data'] ?? data['notifications'] ?? []);
           _isLoading = false;
@@ -91,7 +85,7 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
         });
         _animationController.forward();
       } else {
-        throw Exception('Failed to load notifications: ${response.statusCode}');
+        throw Exception('Failed to load notifications.');
       }
     } catch (e) {
       setState(() {
@@ -160,13 +154,9 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
 
       if (token == null) return;
 
-      await http.patch(
-        Uri.parse('https://call-kaarigar-server.onrender.com/api/notifications/$notificationId/read'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // ── UPDATED: uses NotificationsApi ──────────────────────────────
+      await NotificationsApi.markAsRead(token: token, notificationId: notificationId);
+      // ─────────────────────────────────────────────────────────────────
 
       setState(() {
         final index = notifications.indexWhere((n) => n['id'] == notificationId);
@@ -187,15 +177,11 @@ class _NotificationPageState extends State<NotificationPage> with TickerProvider
 
       if (token == null) return;
 
-      final response = await http.delete(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/notifications/$notificationId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // ── UPDATED: uses NotificationsApi ──────────────────────────────
+      await NotificationsApi.deleteNotification(token: token, notificationId: notificationId);
+      // ─────────────────────────────────────────────────────────────────
 
-      if (response.statusCode == 200) {
+      if (true) {
         setState(() {
           notifications.removeWhere((n) => n['id'] == notificationId);
         });

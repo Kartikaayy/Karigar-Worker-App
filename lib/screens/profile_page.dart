@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'api_service.dart';
+import 'api/api.dart'; // ← single import for all API classes
 import '../widgets/profile_image_picker.dart';
 import 'login_screen.dart';
 
@@ -88,7 +88,9 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       return;
     }
 
-    final Map<String, dynamic> apiResponse = await ApiService.getUserProfile(token);
+    // ── UPDATED: uses UsersApi ───────────────────────────────────────
+    final Map<String, dynamic> apiResponse = await UsersApi.getMyProfile(token);
+    // ─────────────────────────────────────────────────────────────────
 
     if (apiResponse['error'] != null) {
       _handleApiError(apiResponse);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api/api.dart'; // ← single import for all API classes
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:call_karigar_worker_application/all temporary data/completed_services_page.dart';
 import 'package:call_karigar_worker_application/all temporary data/reviews_page.dart';
 
@@ -68,24 +67,13 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
         throw Exception('Authentication token not found.');
       }
 
-      // API call to get earnings summary and services
-      final earningsResponse = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/payments/worker'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      // ── UPDATED: uses PaymentsApi & ReviewsApi ───────────────────────
+      final earningsData = await PaymentsApi.getWorkerEarnings(token);
+      final reviewsData  = await ReviewsApi.getWorkerReviews(
+          token: token, workerId: widget.workerId);
+      // ─────────────────────────────────────────────────────────────────
 
-      // API call to get reviews and ratings
-      final reviewsResponse = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/reviews/worker/${widget.workerId}'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (earningsResponse.statusCode == 200) {
-        final earningsData = json.decode(earningsResponse.body);
+      if (earningsData != null) {
         final List<dynamic> payments = earningsData['data'] ?? [];
 
         double total = 0;
@@ -114,8 +102,7 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
         throw Exception('Failed to load earnings data.');
       }
 
-      if (reviewsResponse.statusCode == 200) {
-        final reviewsData = json.decode(reviewsResponse.body);
+      if (reviewsData != null) {
         final List<dynamic> reviews = reviewsData['data'] ?? [];
 
         double totalRating = 0;

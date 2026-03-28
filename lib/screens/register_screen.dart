@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api/api.dart'; // ← single import for all API classes
+
 import 'package:flutter/services.dart'; // Import for FilteringTextInputFormatter
-import 'dart:convert';
+
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -102,24 +103,18 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse("https://callkaargarapi.rahulsh.me/api/auth/register");
-
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'password': password,
-          'role': _selectedRole!,
-        },
+      // ── UPDATED: uses AuthApi instead of raw http ─────────────────────
+      final responseData = await AuthApi.register(
+        name: name,
+        email: email,
+        phone: phone,
+        password: password,
+        role: _selectedRole!,
       );
+      // ─────────────────────────────────────────────────────────────────
 
-      final responseData = jsonDecode(response.body);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (responseData['data'] != null || responseData['message'] == null) {
         if (!mounted) return;
 
         _showSuccess("Registration successful!");

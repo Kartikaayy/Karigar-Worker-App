@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api/api.dart'; // ← single import for all API classes
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
 
 class AllJobsPage extends StatefulWidget {
   const AllJobsPage({super.key});
@@ -101,19 +100,11 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
         throw Exception('Authentication token not found. Please login again.');
       }
 
-      final response = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/bookings/worker'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // ── UPDATED: uses BookingsApi ─────────────────────────────────────
+      final jsonResponse = await BookingsApi.getWorkerBookings(token);
+      // ─────────────────────────────────────────────────────────────────
 
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
+      if (jsonResponse != null) {
         final bookingsData = jsonResponse['data'] as List? ?? [];
 
         setState(() {
@@ -134,10 +125,8 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
           _isLoading = false;
         });
         _animationController.forward();
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication failed. Please login again.');
       } else {
-        throw Exception('Failed to load bookings: HTTP ${response.statusCode}');
+        throw Exception('Failed to load bookings from server.');
       }
     } catch (e) {
       print('Error fetching bookings: $e');
@@ -234,48 +223,28 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
         throw Exception('Authentication token not found');
       }
 
-      String apiEndpoint;
-      String requestBody = '';
       String successMessage = '';
-
-      // Map the UI status to appropriate API endpoint and request body
       switch (newStatus.toLowerCase()) {
-        case 'accepted':
-        case 'active':
-          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
-          requestBody = jsonEncode({'action': 'accept'});
-          successMessage = 'Booking accepted successfully';
-          break;
-        case 'rejected':
-        case 'cancelled':
-          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/handle-request';
-          requestBody = jsonEncode({'action': 'reject'});
-          successMessage = 'Booking rejected successfully';
-          break;
-        case 'completed':
-          apiEndpoint = 'https://callkaargarapi.rahulsh.me/api/bookings/$bookingId/complete';
-          requestBody = '{}'; // Empty JSON object for complete endpoint
-          successMessage = 'Booking marked as completed';
-          break;
-        default:
-          throw Exception('Unsupported status: $newStatus');
+        case 'accepted': case 'active': successMessage = 'Booking accepted successfully'; break;
+        case 'rejected': case 'cancelled': successMessage = 'Booking rejected successfully'; break;
+        case 'completed': successMessage = 'Booking marked as completed'; break;
+        default: throw Exception('Unsupported status: $newStatus');
       }
 
-      final response = await http.post(
-        Uri.parse(apiEndpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      );
+      // ── UPDATED: uses BookingsApi ─────────────────────────────────────
+      Map<String, dynamic> apiResponse;
+      if (newStatus.toLowerCase() == 'completed') {
+        apiResponse = await BookingsApi.completeBooking(token: token, bookingId: bookingId);
+      } else {
+        final action = (newStatus.toLowerCase() == 'accepted' || newStatus.toLowerCase() == 'active')
+            ? 'accept' : 'reject';
+        apiResponse = await BookingsApi.handleBookingRequest(
+            token: token, bookingId: bookingId, action: action);
+      }
+      // ─────────────────────────────────────────────────────────────────
 
-      print('Update Status Response: ${response.statusCode}');
-      print('Update Status Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        _fetchBookings(); // Refresh the data
-
+      if (apiResponse != null) {
+        _fetchBookings();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(successMessage),
@@ -286,8 +255,7 @@ class _AllJobsPageState extends State<AllJobsPage> with TickerProviderStateMixin
           ),
         );
       } else {
-        final errorResponse = json.decode(response.body);
-        throw Exception(errorResponse['message'] ?? 'Failed to update booking status');
+        throw Exception('Failed to update booking status');
       }
     } catch (e) {
       print('Error updating status: $e');
