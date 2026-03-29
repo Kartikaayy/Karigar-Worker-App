@@ -25,7 +25,7 @@ class AuthApi {
   }) async {
     final res = await ApiClient.post(
       '/auth/register',
-      formBody: {
+      body: {
         'name': name,
         'email': email,
         'phone': phone,

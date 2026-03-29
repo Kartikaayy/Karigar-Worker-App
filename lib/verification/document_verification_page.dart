@@ -24,7 +24,7 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage>
 
   // ── Constants ──────────────────────────────────────────────────────────────
   static const String _baseUrl =
-      'https://call-karigar-backend-production.up.railway.app/api';
+      'https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api';
 
   // How often to poll the status API (in seconds)
   static const int _pollIntervalSeconds = 5;

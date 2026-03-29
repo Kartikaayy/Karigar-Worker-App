@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 ///  CHANGE YOUR BASE URL HERE — and only here.
 /// ─────────────────────────────────────────────
 const String kBaseUrl =
-    "https://call-karigar-backend-production.up.railway.app/api";
+    "https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api";
 
 /// A thin HTTP client that automatically:
 ///   • Prepends [kBaseUrl] to every path
