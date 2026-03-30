@@ -89,11 +89,11 @@ class _CompletedServicesPageState extends State<CompletedServicesPage>
         throw Exception('Authentication token not found. Please login again.');
       }
 
-      print('Fetching from: https://callkaargarapi.rahulsh.me/api/payments/worker');
+      print('Fetching from the api: https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api/payments/worker');
       print('Using token: ${token.substring(0, 20)}...');
 
       final response = await http.get(
-        Uri.parse('https://callkaargarapi.rahulsh.me/api/payments/worker'),
+        Uri.parse('https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api/payments/worker'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

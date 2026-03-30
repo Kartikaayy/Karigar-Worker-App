@@ -20,7 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   late Animation<Offset> _slideAnim;
 
   static const String _baseUrl =
-      'https://call-karigar-backend-production.up.railway.app/api';
+      'https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api';
 
   @override
   void initState() {
