@@ -93,7 +93,8 @@ class _CompletedServicesPageState extends State<CompletedServicesPage>
       print('Using token: ${token.substring(0, 20)}...');
 
       final response = await http.get(
-        Uri.parse('https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api/payments/worker'),
+        // Uri.parse('https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api/payments/worker'),
+        Uri.parse('http://13.201.137.141:5000/api/payments/worker'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
