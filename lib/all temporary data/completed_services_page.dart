@@ -94,7 +94,7 @@ class _CompletedServicesPageState extends State<CompletedServicesPage>
 
       final response = await http.get(
         // Uri.parse('https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api/payments/worker'),
-        Uri.parse('http://13.201.137.141:5000/api/payments/worker'),
+        Uri.parse('http://13.203.192.220:5000/api/payments/worker'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -121,19 +121,25 @@ class _CompletedServicesPageState extends State<CompletedServicesPage>
           parsedServices = [Map<String, dynamic>.from(data)];
         }
 
+
         setState(() {
           services = parsedServices.map((service) {
-            // Updated logic to safely access nested data
-            final bookingData = service['bookingId'] as Map<String, dynamic>?;
-            final customerData = service['customerId'] as Map<String, dynamic>?;
+            final booking = service['booking'] as Map<String, dynamic>?;
+            final customer = service['customer'] as Map<String, dynamic>?;
+            final worker = service['worker'] as Map<String, dynamic>?;
+            final workerServices = worker?['services'] as List<dynamic>?;
+            String? serviceTitle;
+            if (workerServices != null && workerServices.isNotEmpty) {
+              serviceTitle = workerServices[0]['service']?['title'] as String?;
+            }
 
             return {
-              'service': bookingData?['serviceName'] ?? 'Unknown Service',
+              'service': serviceTitle ?? 'Unknown Service',
               'date': service['createdAt'] ?? 'Date not available',
               'amount': (service['amount'] ?? 0).toString(),
-              'status': bookingData?['status'] ?? 'pending',
-              'customer': customerData?['name'] ?? 'Unknown Customer',
-              'id': service['_id'],
+              'status': service['status'] ?? booking?['status'] ?? 'pending',
+              'customer': customer?['name'] ?? 'Unknown Customer',
+              'id': service['paymentId'],
             };
           }).toList();
           isLoading = false;

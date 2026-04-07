@@ -406,12 +406,14 @@ class _EarningPageState extends State<EarningPage> with TickerProviderStateMixin
                     const Icon(Icons.payments_rounded, color: Colors.white, size: 14),
                     const SizedBox(width: 6),
                     Text(
-                      "Last payout: ₹${lastPayoutAmount.toStringAsFixed(0)} • $lastPayoutDate",
+                      "Last payout: ₹${lastPayoutAmount.toStringAsFixed(0)} • ${lastPayoutDate.length > 10 ? lastPayoutDate.substring(0, 10) : lastPayoutDate}",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),

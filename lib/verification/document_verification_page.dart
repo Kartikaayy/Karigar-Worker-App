@@ -25,7 +25,7 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage>
   // ── Constants ──────────────────────────────────────────────────────────────
   static const String _baseUrl =
       // 'https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api';
-          'http://13.201.137.141:5000/api';
+          'http://13.203.192.220:5000/api';
 
   // How often to poll the status API (in seconds)
   static const int _pollIntervalSeconds = 5;

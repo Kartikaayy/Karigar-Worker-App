@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 /// ─────────────────────────────────────────────
 const String kBaseUrl =
     // "https://x7xxj2b799.execute-api.ap-south-1.amazonaws.com/api";
-    "http://13.201.137.141:5000/api";
+    "http://13.203.192.220:5000/api";
 
 /// A thin HTTP client that automatically:
 ///   • Prepends [kBaseUrl] to every path

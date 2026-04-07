@@ -30,7 +30,6 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-
     _fetchReviews();
   }
 
@@ -42,7 +41,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       });
 
       final response = await http.get(
-        Uri.parse('http://13.201.137.141:5000/api/reviews/worker/${widget.workerId}'),
+        Uri.parse('http://13.203.192.220:5000/api/reviews/worker/${widget.workerId}'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -51,25 +50,27 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['success'] == true && data['data'] != null) {
+        if (data['success'] == true && data['data'] != null && (data['data'] as List).isNotEmpty) {
           setState(() {
             reviews = List<Map<String, dynamic>>.from(data['data'].map((review) => {
               'user': review['customerId']?['name'] ?? 'Anonymous User',
               'rating': (review['rating'] ?? 0).toDouble(),
-              'review': review['review'] ?? 'No review provided',
-              'service': _getServiceName(review['workerServiceId']),
+              'review': review['comment'] ?? '',           // ✅ Fixed: was 'review', now 'comment'
+              'service': 'General Service',               // ✅ Fixed: workerServiceId has no name
+              'serviceQuality': review['serviceQuality'] ?? 0,   // ✅ New sub-rating
+              'punctuality': review['punctuality'] ?? 0,          // ✅ New sub-rating
+              'professionalism': review['professionalism'] ?? 0,  // ✅ New sub-rating
               'date': _formatDate(review['createdAt']),
               'avatar': _getAvatarEmoji(review['customerId']?['name']),
               'bookingId': review['bookingId'] ?? '',
             }));
             isLoading = false;
           });
-
           _animationController.forward();
         } else {
           setState(() {
-            hasError = true;
-            errorMessage = 'No reviews found for this worker';
+            hasError = false;
+            reviews = [];
             isLoading = false;
           });
         }
@@ -89,39 +90,25 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
     }
   }
 
-  String _getServiceName(dynamic workerServiceId) {
-    // You can customize this based on your service categories
-    // For now, returning a default value
-    if (workerServiceId != null && workerServiceId is Map) {
-      return workerServiceId['name'] ?? 'General Service';
-    }
-    return 'General Service';
-  }
-
   String _formatDate(String? dateString) {
     if (dateString == null) return 'Unknown date';
-
     try {
       final date = DateTime.parse(dateString);
       final now = DateTime.now();
       final difference = now.difference(date);
-
-      if (difference.inDays == 0) {
-        return 'Today';
-      } else if (difference.inDays == 1) {
-        return '1 day ago';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays} days ago';
-      } else if (difference.inDays < 30) {
+      if (difference.inDays == 0) return 'Today';
+      if (difference.inDays == 1) return '1 day ago';
+      if (difference.inDays < 7) return '${difference.inDays} days ago';
+      if (difference.inDays < 30) {
         final weeks = (difference.inDays / 7).floor();
         return weeks == 1 ? '1 week ago' : '$weeks weeks ago';
-      } else if (difference.inDays < 365) {
+      }
+      if (difference.inDays < 365) {
         final months = (difference.inDays / 30).floor();
         return months == 1 ? '1 month ago' : '$months months ago';
-      } else {
-        final years = (difference.inDays / 365).floor();
-        return years == 1 ? '1 year ago' : '$years years ago';
       }
+      final years = (difference.inDays / 365).floor();
+      return years == 1 ? '1 year ago' : '$years years ago';
     } catch (e) {
       return 'Unknown date';
     }
@@ -129,8 +116,6 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
 
   String _getAvatarEmoji(String? name) {
     if (name == null || name.isEmpty) return '👤';
-
-    // Simple avatar generation based on first letter
     final firstLetter = name.toUpperCase()[0];
     const avatars = {
       'A': '👨‍💼', 'B': '👩‍💼', 'C': '👨‍🔧', 'D': '👩‍🏫', 'E': '👨‍🏗️',
@@ -139,7 +124,6 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       'P': '👩‍🌾', 'Q': '👨‍🏭', 'R': '👩‍💼', 'S': '👨‍🔧', 'T': '👩‍🏫',
       'U': '👨‍💻', 'V': '👩‍🎨', 'W': '👨‍🔬', 'X': '👩‍🍳', 'Y': '👨‍⚕️', 'Z': '👩‍🎓'
     };
-
     return avatars[firstLetter] ?? '👤';
   }
 
@@ -158,7 +142,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
   Map<int, int> get ratingDistribution {
     Map<int, int> distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
     for (var review in reviews) {
-      int rating = review['rating'].floor();
+      int rating = (review['rating'] as double).floor();
       distribution[rating] = (distribution[rating] ?? 0) + 1;
     }
     return distribution;
@@ -169,11 +153,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFFFF7043),
-            Color(0xFFFFAB91),
-            Color(0xFFFFF3E0),
-          ],
+          colors: [Color(0xFFFF7043), Color(0xFFFFAB91), Color(0xFFFFF3E0)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           stops: [0.0, 0.3, 1.0],
@@ -230,11 +210,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.star_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    child: const Icon(Icons.star_rounded, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -252,10 +228,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                         const SizedBox(height: 4),
                         Text(
                           'See what your customers say about you',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.8),
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
                         ),
                       ],
                     ),
@@ -332,10 +305,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
             SizedBox(height: 16),
             Text(
               'Loading reviews...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF2C3E50),
-              ),
+              style: TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
             ),
           ],
         ),
@@ -353,11 +323,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                 color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                Icons.error_outline_rounded,
-                size: 48,
-                color: Colors.red.shade400,
-              ),
+              child: Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade400),
             ),
             const SizedBox(height: 16),
             Text(
@@ -369,13 +335,13 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              errorMessage,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.red.shade600,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                errorMessage,
+                style: TextStyle(fontSize: 14, color: Colors.red.shade600),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -386,9 +352,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                 backgroundColor: const Color(0xFFFF7043),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -407,29 +371,21 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                 color: const Color(0xFFFF7043).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                Icons.rate_review_outlined,
-                size: 48,
-                color: const Color(0xFFFF7043),
-              ),
+              child: Icon(Icons.rate_review_outlined, size: 48, color: const Color(0xFFFF7043)),
             ),
             const SizedBox(height: 16),
             const Text(
               'No Reviews Yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Complete some bookings to start receiving reviews from your customers.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'Complete some bookings to start receiving reviews from your customers.',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -441,20 +397,9 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          // Overall Rating Card
-          _buildAnimatedCard(
-            delay: 100,
-            child: _buildOverallRatingCard(),
-          ),
-
+          _buildAnimatedCard(delay: 100, child: _buildOverallRatingCard()),
           const SizedBox(height: 24),
-
-          // Rating Distribution
-          _buildAnimatedCard(
-            delay: 200,
-            child: _buildRatingDistribution(),
-          ),
-
+          _buildAnimatedCard(delay: 200, child: _buildRatingDistribution()),
           const SizedBox(height: 32),
 
           // Reviews Header
@@ -471,31 +416,24 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.rate_review_rounded, color: const Color(0xFFFF7043), size: 20),
+                child: const Icon(Icons.rate_review_rounded, color: Color(0xFFFF7043), size: 20),
               ),
               const SizedBox(width: 12),
               const Text(
                 "Customer Reviews",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
 
           // Reviews List
           ...reviews.asMap().entries.map((entry) {
-            int index = entry.key;
-            Map<String, dynamic> review = entry.value;
             return _buildAnimatedCard(
-              delay: 300 + (index * 100),
-              child: _buildReviewTile(review),
+              delay: 300 + (entry.key * 100),
+              child: _buildReviewTile(entry.value),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -529,10 +467,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
 
         return SlideTransition(
           position: cardAnimation,
-          child: FadeTransition(
-            opacity: opacityAnimation,
-            child: child,
-          ),
+          child: FadeTransition(opacity: opacityAnimation, child: child),
         );
       },
     );
@@ -547,11 +482,8 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFFFF7043),
-              const Color(0xFFFF8A65),
-            ],
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF7043), Color(0xFFFF8A65)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -566,11 +498,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
-                    Icons.star_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
+                  child: const Icon(Icons.star_rounded, color: Colors.white, size: 32),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -599,10 +527,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                           const SizedBox(width: 12),
                           Text(
                             "out of 5",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 14,
-                            ),
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
                           ),
                         ],
                       ),
@@ -640,19 +565,12 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.white.withOpacity(0.8),
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8)),
           textAlign: TextAlign.center,
         ),
       ],
@@ -669,17 +587,11 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [
-              Colors.white,
-              const Color(0xFFFF7043).withOpacity(0.02),
-            ],
+            colors: [Colors.white, const Color(0xFFFF7043).withOpacity(0.02)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(
-            color: const Color(0xFFFF7043).withOpacity(0.1),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFFFF7043).withOpacity(0.1), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,10 +602,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.amber.shade400,
-                        Colors.amber.shade600,
-                      ],
+                      colors: [Colors.amber.shade400, Colors.amber.shade600],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -702,11 +611,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                 const SizedBox(width: 12),
                 const Text(
                   "Rating Breakdown",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2C3E50)),
                 ),
               ],
             ),
@@ -728,10 +633,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
       margin: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Text(
-            '$stars',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          ),
+          Text('$stars', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(width: 4),
           const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
           const SizedBox(width: 12),
@@ -759,11 +661,7 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
           const SizedBox(width: 8),
           Text(
             '$count',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -771,6 +669,9 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
   }
 
   Widget _buildReviewTile(Map<String, dynamic> review) {
+    final String commentText = (review['review'] as String).trim();
+    final bool hasComment = commentText.isNotEmpty;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Material(
@@ -782,22 +683,16 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
-              colors: [
-                Colors.white,
-                const Color(0xFFFF7043).withOpacity(0.01),
-              ],
+              colors: [Colors.white, const Color(0xFFFF7043).withOpacity(0.01)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            border: Border.all(
-              color: const Color(0xFFFF7043).withOpacity(0.05),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFFFF7043).withOpacity(0.05), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // ── Header ──────────────────────────────────────────────
               Row(
                 children: [
                   Container(
@@ -853,16 +748,14 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
                             const SizedBox(width: 8),
                             Text(
                               review['date'] ?? '',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
+                  // Overall star badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -892,27 +785,92 @@ class _ReviewsPageState extends State<ReviewsPage> with TickerProviderStateMixin
 
               const SizedBox(height: 16),
 
-              // Review Text
+              // ── Sub-ratings row ──────────────────────────────────────
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: const Color(0xFFFFF8F5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: const Color(0xFFFF7043).withOpacity(0.08)),
                 ),
-                child: Text(
-                  review['review'] ?? 'No review text',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.4,
-                    color: Color(0xFF2C3E50),
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSubRating('Quality', review['serviceQuality']),
+                    _buildSubRatingDivider(),
+                    _buildSubRating('Punctuality', review['punctuality']),
+                    _buildSubRatingDivider(),
+                    _buildSubRating('Professional', review['professionalism']),
+                  ],
                 ),
               ),
+
+              // ── Comment box (only if comment exists) ─────────────────
+              if (hasComment) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.format_quote_rounded, color: Colors.grey.shade400, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          commentText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 1.4,
+                            color: Color(0xFF2C3E50),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildSubRating(String label, dynamic value) {
+    final int val = (value is int) ? value : (value is double ? value.toInt() : 0);
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star_rounded, color: Colors.amber.shade600, size: 14),
+            const SizedBox(width: 3),
+            Text(
+              '$val',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.amber.shade700,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubRatingDivider() {
+    return Container(width: 1, height: 32, color: const Color(0xFFFF7043).withOpacity(0.15));
   }
 }
