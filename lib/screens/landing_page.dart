@@ -346,16 +346,16 @@ class _LandingPageState extends State<LandingPage>
               ),
 
               // Debug Buttons
-              Positioned(
-                top: 16,
-                left: 16,
-                child: _debugResetButton(),
-              ),
-              Positioned(
-                top: 16,
-                right: 16,
-                child: _debugSkipButton(),
-              ),
+              // Positioned(
+              //   top: 16,
+              //   left: 16,
+              //   child: _debugResetButton(),
+              // ),
+              // Positioned(
+              //   top: 16,
+              //   right: 16,
+              //   child: _debugSkipButton(),
+              // ),
             ],
           ),
         ),
@@ -364,64 +364,64 @@ class _LandingPageState extends State<LandingPage>
   }
 
   // --- Debug Buttons ---
-  Widget _debugResetButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _resetVerificationStatus,
-          borderRadius: BorderRadius.circular(12),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text(
-              'Reset',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _debugResetButton() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: Colors.red.withOpacity(0.9),
+  //       borderRadius: BorderRadius.circular(12),
+  //     ),
+  //     child: Material(
+  //       color: Colors.transparent,
+  //       child: InkWell(
+  //         onTap: _resetVerificationStatus,
+  //         borderRadius: BorderRadius.circular(12),
+  //         child: const Padding(
+  //           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  //           child: Text(
+  //             'Reset',
+  //             style: TextStyle(
+  //               fontSize: 12,
+  //               color: Colors.white,
+  //               fontWeight: FontWeight.bold,
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
-  Widget _debugSkipButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text(
-              'Skip',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _debugSkipButton() {
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       color: Colors.green.withOpacity(0.9),
+  //       borderRadius: BorderRadius.circular(12),
+  //     ),
+  //     child: Material(
+  //       color: Colors.transparent,
+  //       child: InkWell(
+  //         onTap: () {
+  //           Navigator.pushReplacement(
+  //             context,
+  //             MaterialPageRoute(builder: (context) => const HomePage()),
+  //           );
+  //         },
+  //         borderRadius: BorderRadius.circular(12),
+  //         child: const Padding(
+  //           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  //           child: Text(
+  //             'Skip',
+  //             style: TextStyle(
+  //               fontSize: 12,
+  //               color: Colors.white,
+  //               fontWeight: FontWeight.bold,
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   // --- Status Helpers ---
   List<Color> _getStatusGradient() {
