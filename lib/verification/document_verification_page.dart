@@ -383,7 +383,7 @@ class _DocumentVerificationPageState extends State<DocumentVerificationPage>
 
   void _removeFile(String type) => setState(() => selectedFiles[type] = null);
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Submit the doduments
   Future<void> _submit() async {
     final allReady = documentConfig.entries
         .where((e) => e.value['required'] == true)
